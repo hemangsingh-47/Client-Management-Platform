@@ -10,40 +10,59 @@
 
 ---
 
-## Roadmap Scope: Phases 1, 2 & 3
+## Roadmap Scope: Phases 1, 2, 3 & 4
 
-This repository implements the first 3 phases of the 15-phase FreelanceHub roadmap:
+This repository implements the first 4 phases of the 15-phase FreelanceHub roadmap:
 
 - **Phase 1: Project Setup & Foundation**: Verified Next.js App Router, React 19, TypeScript 5, Tailwind CSS v4, Lucide React icons, scalable folder architecture, zero build/lint errors.
 - **Phase 2: Professional Design System & Theme**: Minimal, structured, business-focused visual identity using a signature **Forest Green** palette, full light and dark mode support with zero FOUC, typography scale, 4px spacing unit, 8px/12px border radii, and 16 reusable UI primitives.
-- **Phase 3: Main Application Layout**: Complete production-grade application shell consisting of desktop collapsible sidebar, mobile drawer navigation, top header with global search (⌘K shortcut), sample notifications flyout, theme toggle, user profile menu, and responsive content area with neutral welcome placeholder.
+- **Phase 3: Main Application Layout**: Complete production-grade application shell consisting of desktop collapsible sidebar, mobile drawer navigation, top header with global search (⌘K shortcut), sample notifications flyout, theme toggle, user profile menu, and responsive content area.
+- **Phase 4: Dashboard UI Development**: Comprehensive freelancer business overview at `/dashboard`, featuring 4 KPI metric blocks, an active projects table with progress indicators and INR currency formatting, an interactive upcoming tasks list, a responsive SVG earnings chart with date-range filters, and a recent activity stream.
 
 ---
 
-## Application Shell Architecture (`src/components/layout`)
+## Phase 4 Dashboard Architecture (`src/components/dashboard`)
 
-1. **Sidebar (`sidebar.tsx`)**:
-   - Fixed desktop navigation inspired by Bonsai.
-   - Smoothly collapsible from `w-64` (expanded) to `w-16` (compact).
-   - In collapsed state, navigation items display accessible tooltips.
-   - Includes Brand wordmark, `WorkspaceSwitcher`, workspace navigation items, and bottom utilities.
-2. **Mobile Sidebar (`mobile-sidebar.tsx`)**:
-   - Off-canvas drawer triggered by hamburger button on mobile & tablet.
-   - Smooth slide-in animation, backdrop blur overlay, accessible `Escape` key and close button handling.
-   - Automatically closes upon navigation.
-3. **Top Header (`top-header.tsx`)**:
-   - Breadcrumb navigation showing current workspace section.
-   - Global search trigger button (⌘K shortcut opens `GlobalSearch` dialog).
-   - `NotificationButton` with sample unread alerts and empty state.
-   - `ThemeToggle` for instant light/dark mode switching.
-   - `UserMenu` profile dropdown.
-4. **Workspace Switcher (`workspace-switcher.tsx`)**:
-   - Switch active workspace context ("Studio Workspace", "Personal Consulting") with plan indicator.
-5. **Main Content Container (`page-header.tsx` & `app-shell.tsx`)**:
-   - Standardized page header with title, description, and action button slots.
-   - Neutral overview placeholder displaying:
-     > **Welcome to FreelanceHub**  
-     > *Your workspace is ready. Your projects, clients and business activity will appear here.*
+```text
+----------------------------------------------------
+Header: Overview               Date | New Project
+----------------------------------------------------
+
+Paid This Month | Outstanding | Active | Due Soon
+
+----------------------------------------------------
+Active Projects Table (65%)          Upcoming Tasks (35%)
+
+----------------------------------------------------
+Earnings Overview (65%)              Recent Activity (35%)
+
+----------------------------------------------------
+```
+
+1. **Dashboard Header (`dashboard-header.tsx`)**:
+   - Page title ("Overview"), subtitle ("Here's what's happening with your freelance business.").
+   - Current date badge with calendar icon.
+   - Date range selector ("This Month", "Last 30 Days", "This Quarter", "Year to Date").
+   - Primary action `+ New Project` button opening a modal dialog (clearly marked as a UI shell demonstration).
+2. **Business Overview KPIs (`kpi-section.tsx`)**:
+   - **Paid This Month**: Total payments received during current month formatted in INR (`₹85,000`), with comparison badge (`+12.5% vs last month`).
+   - **Outstanding Payments**: Total unpaid balance (`₹1,20,000`) with invoice count note (`Across 2 milestone invoices`).
+   - **Active Projects**: Total count (`4 Active`), with secondary breakdown (`1 on hold • 1 planning`).
+   - **Tasks Due Soon**: Incomplete tasks due in next 7 days (`4 This week`), with overdue alert badge (`1 Overdue`).
+3. **Active Projects Table (`active-projects-table.tsx`)**:
+   - Table columns: Project, Client, Status (semantic badges), Deadline, Progress bar (reflecting percentage), and Budget (`₹45,000`, `₹80,000`, `₹30,000`, `₹1,20,000`).
+   - Row hover effects, empty state handling, and "View all" link to `/projects`.
+4. **Upcoming Tasks List (`upcoming-tasks-list.tsx`)**:
+   - Interactive visual completion checkboxes with local state toggle and strikethrough styling.
+   - Task title, related project name, due date indicator (`Today`, `Tomorrow`, `20 Nov`), and priority badges (`High`, `Medium`, `Low`).
+5. **Earnings Overview Chart (`earnings-chart.tsx`)**:
+   - Responsive SVG bar chart with date-range filtering (`Last 6M`, `2026`, `Last 12M`).
+   - Dynamic bar height scaling, reference gridlines, and hover tooltips showing month and amount.
+   - Total received calculation (`formatINR`), average monthly revenue indicator.
+6. **Recent Activity Feed (`recent-activity-feed.tsx`)**:
+   - Compact audit log with Lucide icons (`CreditCard`, `CheckCircle2`, `FolderPlus`, `FileCheck`, `Calendar`), relative timestamps, and project/client context.
+7. **Centralized Typed Mock Data (`src/lib/mock-data/dashboard.ts`)**:
+   - Centralizes all KPI records, active projects, tasks, earnings ranges, and activity events with full TypeScript interfaces.
 
 ---
 
@@ -59,60 +78,6 @@ This repository implements the first 3 phases of the 15-phase FreelanceHub roadm
 | **Charcoal** | `#252B28` | Primary text |
 | **Secondary Text** | `#68736C` | Supporting text & captions |
 | **Border** | `#E2E8E2` | Thin dividers, inputs & panel borders |
-
-### Dark Theme Tokens
-- Background: `#111614`
-- Surface: `#171E1A`
-- Surface Elevated: `#1D2621`
-- Border: `#28352E`
-- Primary Text: `#EDF1EE`
-- Secondary Text: `#93A198`
-
-### Semantic Tokens
-- **Success**: Light `#EBF5F0` / Dark `#12271D` (paid invoices, completed milestones)
-- **Warning**: Light `#FEF7EC` / Dark `#2B2011` (pending approvals, due soon)
-- **Error**: Light `#FDF2F2` / Dark `#2D1517` (overdue items, critical alerts)
-- **Info**: Light `#F0F4F8` / Dark `#132230` (in-review, scheduled deliverables)
-
----
-
-## Reusable UI Component Library (`src/components/ui`)
-
-1. **Button**: Primary, secondary, outline, ghost, danger variants; sizes `sm`, `md`, `lg`; left/right icons, loading spinner.
-2. **Input**: Text, search, email, number; size options; left/right icon addons; error & disabled states.
-3. **Textarea**: Multi-line text input with custom rows, error states, and accessible focus.
-4. **Select**: Custom-styled accessible select with dropdown chevron, placeholder, and option items.
-5. **Checkbox**: Accessible checkbox with checkmark/minus icons, label, description, and indeterminate support.
-6. **Badge**: Status indicators with optional live status dots across semantic and brand variants.
-7. **Card**: Surface panels with CardHeader, CardTitle, CardDescription, CardContent, CardFooter.
-8. **Modal**: Accessible dialog with backdrop blur, keyboard ESC close, focus management, and action footer.
-9. **Dropdown**: Accessible popup menu with click-outside detection, keyboard navigation, and destructive items.
-10. **Tooltip**: Positionable (`top`, `bottom`, `left`, `right`) hover/focus tooltips.
-11. **Tabs**: Accessible tabbed views with TabsList, TabsTrigger, and TabsContent.
-12. **Divider**: Horizontal/vertical line with optional centered text label.
-13. **Table**: Primitives (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`).
-14. **Skeleton**: Animated shimmer placeholders for text, circular avatars, and cards.
-15. **EmptyState**: Minimalist empty slate with icon, title, description, and action button.
-16. **FormField**: Form input wrapper managing label, required indicator, optional tag, hint, and error message.
-
----
-
-## Route Overview
-
-```text
-src/app/(app)/
-├── layout.tsx         # AppShell wrapper (Sidebar, Header, Content)
-├── page.tsx           # Application landing overview (Neutral welcome placeholder)
-├── dashboard/page.tsx # Overview alias
-├── clients/page.tsx   # Clients placeholder
-├── projects/page.tsx  # Projects placeholder
-├── tasks/page.tsx     # Tasks & Milestones placeholder
-├── deliverables/page.tsx # Deliverables placeholder
-├── payments/page.tsx  # Payments placeholder
-├── reports/page.tsx   # Reports placeholder
-├── settings/page.tsx  # Settings placeholder
-└── showcase/page.tsx  # Full Phase 2 Design System & Component Library showcase
-```
 
 ---
 

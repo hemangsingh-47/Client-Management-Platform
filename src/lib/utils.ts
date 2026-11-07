@@ -21,10 +21,21 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
 }
 
 /**
+ * Formats an amount using Indian numbering system and INR symbol (₹).
+ * e.g. 120000 -> ₹1,20,000
+ */
+export function formatINR(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
  * Capitalizes the first letter of a string.
  */
 export function capitalize(str: string): string {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-
