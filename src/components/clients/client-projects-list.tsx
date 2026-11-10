@@ -108,3 +108,4 @@ export function ClientProjectsList({ projects = [] }: ClientProjectsListProps) {
 }
 
 export default ClientProjectsList;
+

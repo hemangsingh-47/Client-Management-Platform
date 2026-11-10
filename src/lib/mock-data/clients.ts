@@ -480,3 +480,4 @@ export const MOCK_CLIENT_ACTIVITIES: Record<string, ClientActivity[]> = {
     },
   ],
 };
+

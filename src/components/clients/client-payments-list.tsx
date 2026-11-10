@@ -109,3 +109,4 @@ export function ClientPaymentsList({ payments = [] }: ClientPaymentsListProps) {
 }
 
 export default ClientPaymentsList;
+

@@ -475,3 +475,4 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
 }
 
 export default ClientProfileView;
+
