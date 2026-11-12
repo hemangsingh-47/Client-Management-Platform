@@ -26,6 +26,7 @@ import {
   ClientFormData,
 } from '@/components/clients';
 import { formatINR } from '@/lib/utils';
+import { useAppContext } from '@/context/app-context';
 import {
   ChevronRight,
   ArrowLeft,
@@ -50,12 +51,15 @@ export interface ClientProfileViewProps {
 
 export function ClientProfileView({ clientId }: ClientProfileViewProps) {
   const router = useRouter();
+  const { clients, updateClient } = useAppContext();
 
-  // Find client in initial mock dataset
-  const initialClient =
-    INITIAL_CLIENTS.find((c) => c.id === clientId) || INITIAL_CLIENTS[0];
+  // Find client in context or fallback to initial mock dataset
+  const currentClient =
+    clients.find((c) => c.id === clientId) ||
+    INITIAL_CLIENTS.find((c) => c.id === clientId) ||
+    INITIAL_CLIENTS[0];
 
-  const [client, setClient] = useState<Client>(initialClient);
+  const [client, setClient] = useState<Client>(currentClient);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -79,8 +83,7 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
   };
 
   const handleSaveProfile = (data: ClientFormData) => {
-    setClient((prev) => ({
-      ...prev,
+    const updated: Partial<Client> = {
       name: data.name,
       companyName: data.companyName || undefined,
       email: data.email,
@@ -89,7 +92,9 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
       status: data.status,
       notes: data.notes || undefined,
       lastActivity: 'Just now',
-    }));
+    };
+    setClient((prev) => ({ ...prev, ...updated }));
+    updateClient(client.id, updated);
   };
 
   if (!client) {

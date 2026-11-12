@@ -3,20 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Project,
-  INITIAL_PROJECTS,
-  MOCK_PROJECT_TASKS,
-  MOCK_PROJECT_DELIVERABLES,
-  MOCK_PROJECT_PAYMENTS,
-  MOCK_PROJECT_ACTIVITIES,
-  getProjectClient,
-  ProjectTaskPreview,
-  ProjectDeliverablePreview,
-  ProjectPaymentPreview,
-  ProjectActivityPreview,
-} from '@/lib/mock-data/projects';
-import { INITIAL_CLIENTS, Client } from '@/lib/mock-data/clients';
+import { Project } from '@/types/project';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +21,8 @@ import { ProjectStatusBadge, ProjectPriorityBadge } from './project-badges';
 import { ProjectFormModal, ProjectFormData } from './project-form-modal';
 import { ProjectDeleteModal } from './project-delete-modal';
 import { formatINR } from '@/lib/utils';
+import { getProjectFinancialSummary } from '@/lib/utils/payment-utils';
+import { useAppContext } from '@/context/app-context';
 import {
   ChevronRight,
   ArrowLeft,
@@ -46,10 +35,9 @@ import {
   CheckCircle2,
   Circle,
   FileCheck2,
-  Activity,
   Layers,
   Clock,
-  Sparkles,
+  ArrowUpRight,
 } from 'lucide-react';
 
 export interface ProjectDetailsViewProps {
@@ -58,33 +46,38 @@ export interface ProjectDetailsViewProps {
 
 export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
   const router = useRouter();
+  const {
+    projects,
+    clients,
+    tasks: allTasks,
+    deliverables: allDeliverables,
+    payments: allPayments,
+    updateProject,
+    deleteProject,
+    toggleTaskCompleted,
+  } = useAppContext();
 
-  // Find project in initial mock dataset
-  const initialProject =
-    INITIAL_PROJECTS.find((p) => p.id === projectId) || INITIAL_PROJECTS[0];
+  // Find project
+  const project: Project | undefined =
+    projects.find((p) => p.id === projectId) || projects[0];
 
-  const [project, setProject] = useState<Project>(initialProject);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Client info
-  const client: Client | undefined = getProjectClient(
-    project.clientId,
-    INITIAL_CLIENTS
-  );
+  const client = project ? clients.find((c) => c.id === project.clientId) : undefined;
 
-  // Associated preview data
-  const tasks: ProjectTaskPreview[] = MOCK_PROJECT_TASKS[project.id] || [];
-  const deliverables: ProjectDeliverablePreview[] =
-    MOCK_PROJECT_DELIVERABLES[project.id] || [];
-  const payments: ProjectPaymentPreview[] =
-    MOCK_PROJECT_PAYMENTS[project.id] || [];
-  const activities: ProjectActivityPreview[] =
-    MOCK_PROJECT_ACTIVITIES[project.id] || [];
+  // Live related collections
+  const tasks = project ? allTasks.filter((t) => t.projectId === project.id) : [];
+  const deliverables = project ? allDeliverables.filter((d) => d.projectId === project.id) : [];
+  const payments = project ? allPayments.filter((p) => p.projectId === project.id) : [];
+
+  // Financial summary
+  const finance = project ? getProjectFinancialSummary(project, payments) : null;
 
   const handleSaveProject = (data: ProjectFormData) => {
-    setProject((prev) => ({
-      ...prev,
+    if (!project) return;
+    updateProject(project.id, {
       title: data.title,
       clientId: data.clientId,
       description: data.description,
@@ -95,10 +88,12 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
       priority: data.priority,
       progress: data.progress,
       notes: data.notes || undefined,
-    }));
+    });
   };
 
   const handleDeleteConfirm = () => {
+    if (!project) return;
+    deleteProject(project.id);
     router.push('/projects');
   };
 
@@ -201,10 +196,11 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
           </Button>
 
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => setIsDeleteOpen(true)}
-            className="text-error-text hover:bg-error-bg h-9 px-2.5"
+            className="text-error-text hover:bg-error-bg h-9 px-2.5 cursor-pointer"
             title="Delete project"
           >
             <Trash2 size={15} />
@@ -214,7 +210,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
 
       {/* 3. Summary & Progress KPI Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Budget */}
+        {/* Total Budget */}
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between text-text-secondary mb-2">
             <span className="text-xs font-medium">Total Budget</span>
@@ -227,6 +223,22 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
           </div>
           <span className="text-[11px] text-text-muted mt-0.5 inline-block">
             Agreed milestone total
+          </span>
+        </Card>
+
+        {/* Paid & Outstanding */}
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-text-secondary mb-2">
+            <span className="text-xs font-medium">Total Paid (Completed)</span>
+            <div className="p-1 rounded-md bg-success-bg text-success-text border border-success-border">
+              <CheckCircle2 size={14} />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-bold tracking-tight text-success-text font-mono">
+            {formatINR(finance?.totalPaid || 0)}
+          </div>
+          <span className="text-[11px] text-text-muted mt-0.5 inline-block">
+            Outstanding: {formatINR(finance?.outstandingBalance || 0)}
           </span>
         </Card>
 
@@ -249,23 +261,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
           </div>
         </Card>
 
-        {/* Start Date */}
-        <Card className="p-4 sm:p-5">
-          <div className="flex items-center justify-between text-text-secondary mb-2">
-            <span className="text-xs font-medium">Start Date</span>
-            <div className="p-1 rounded-md bg-surface-subtle border border-border-subtle">
-              <Calendar size={14} />
-            </div>
-          </div>
-          <div className="text-lg sm:text-xl font-bold tracking-tight text-text-primary whitespace-nowrap">
-            {project.startDate}
-          </div>
-          <span className="text-[11px] text-text-muted mt-0.5 inline-block">
-            Project kick-off
-          </span>
-        </Card>
-
-        {/* Deadline */}
+        {/* Target Deadline */}
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between text-text-secondary mb-2">
             <span className="text-xs font-medium">Target Deadline</span>
@@ -277,68 +273,64 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
             {project.deadline}
           </div>
           <span className="text-[11px] text-text-muted mt-0.5 inline-block">
-            Final deliverable due
+            Started on {project.startDate}
           </span>
         </Card>
       </div>
 
       {/* 4. Main Details Layout (2 Columns: Overview/Tabs + Sidebar Info) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left 2 Columns: Structured Previews for Future Modules */}
+        {/* Left 2 Columns: Live Related Sections */}
         <div className="lg:col-span-2 space-y-4">
           <Tabs defaultValue="tasks" className="w-full">
             <TabsList>
               <TabsTrigger value="tasks" className="flex items-center gap-1.5">
-                <span>Tasks & Milestones</span>
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono">
-                  {tasks.length}
-                </span>
+                <span>Tasks ({tasks.length})</span>
               </TabsTrigger>
 
               <TabsTrigger value="deliverables" className="flex items-center gap-1.5">
-                <span>Deliverables</span>
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono">
-                  {deliverables.length}
-                </span>
+                <span>Deliverables ({deliverables.length})</span>
               </TabsTrigger>
 
               <TabsTrigger value="payments" className="flex items-center gap-1.5">
-                <span>Payment Summary</span>
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono">
-                  {payments.length}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger value="activity" className="flex items-center gap-1.5">
-                <span>Recent Activity</span>
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono">
-                  {activities.length}
-                </span>
+                <span>Payments ({payments.length})</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Tab 1: Tasks & Milestones Preview */}
+            {/* Tab 1: Tasks */}
             <TabsContent value="tasks">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-text-primary">
-                      Tasks & Milestones
+                      Project Tasks & Milestones
                     </h3>
                     <p className="text-xs text-text-secondary">
-                      Preview of task breakdowns scheduled for upcoming phases.
+                      Tasks directly update this project&apos;s overall completion percentage.
                     </p>
                   </div>
-                  <Badge variant="outline" size="sm" className="text-[11px]">
-                    Phase 7 Preview
-                  </Badge>
+                  <Link
+                    href="/tasks"
+                    className="text-xs font-medium text-brand-forest dark:text-brand-sage hover:underline flex items-center gap-1"
+                  >
+                    <span>Manage All Tasks</span>
+                    <ArrowUpRight size={13} />
+                  </Link>
                 </div>
 
                 {tasks.length === 0 ? (
                   <EmptyState
                     icon={<Layers size={20} className="text-text-secondary" />}
                     title="No tasks added yet"
-                    description="Sprint items and deliverable milestones will be tracked here."
+                    description="Sprint items and deliverable tasks for this project will be listed here."
+                    action={
+                      <Link
+                        href="/tasks"
+                        className="inline-flex items-center justify-center rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-brand-primary-hover"
+                      >
+                        + Add Task in Tasks Module
+                      </Link>
+                    }
                   />
                 ) : (
                   <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-xs divide-y divide-border-subtle">
@@ -348,20 +340,21 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                         className="flex items-center justify-between p-3.5 hover:bg-surface-hover/60 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          {task.completed ? (
-                            <CheckCircle2
-                              size={16}
-                              className="text-success-text shrink-0"
-                            />
-                          ) : (
-                            <Circle
-                              size={16}
-                              className="text-text-muted shrink-0"
-                            />
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleTaskCompleted(task.id)}
+                            className="cursor-pointer focus:outline-none"
+                            title={task.status === 'COMPLETED' ? 'Mark Incomplete' : 'Mark Complete'}
+                          >
+                            {task.status === 'COMPLETED' ? (
+                              <CheckCircle2 size={17} className="text-success-text shrink-0" />
+                            ) : (
+                              <Circle size={17} className="text-text-muted hover:text-brand-primary shrink-0 transition-colors" />
+                            )}
+                          </button>
                           <span
                             className={
-                              task.completed
+                              task.status === 'COMPLETED'
                                 ? 'text-xs sm:text-sm text-text-muted line-through'
                                 : 'text-xs sm:text-sm text-text-primary font-medium'
                             }
@@ -374,7 +367,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                             Due {task.dueDate}
                           </span>
                           <Badge
-                            variant={task.priority === 'HIGH' ? 'error' : 'default'}
+                            variant={task.priority === 'HIGH' ? 'error' : task.priority === 'MEDIUM' ? 'warning' : 'default'}
                             size="sm"
                             className="text-[10px]"
                           >
@@ -388,7 +381,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
               </div>
             </TabsContent>
 
-            {/* Tab 2: Deliverables Preview */}
+            {/* Tab 2: Deliverables */}
             <TabsContent value="deliverables">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -397,12 +390,16 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                       Project Deliverables
                     </h3>
                     <p className="text-xs text-text-secondary">
-                      Design assets, repositories, and documentation handoffs.
+                      Review artifacts, client approval statuses, and mock attachments.
                     </p>
                   </div>
-                  <Badge variant="outline" size="sm" className="text-[11px]">
-                    Phase 8 Preview
-                  </Badge>
+                  <Link
+                    href="/deliverables"
+                    className="text-xs font-medium text-brand-forest dark:text-brand-sage hover:underline flex items-center gap-1"
+                  >
+                    <span>Deliverables Hub</span>
+                    <ArrowUpRight size={13} />
+                  </Link>
                 </div>
 
                 {deliverables.length === 0 ? (
@@ -410,6 +407,14 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                     icon={<FileCheck2 size={20} className="text-text-secondary" />}
                     title="No deliverables recorded"
                     description="Exported artifacts and client submission versions will be listed here."
+                    action={
+                      <Link
+                        href="/deliverables"
+                        className="inline-flex items-center justify-center rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-brand-primary-hover"
+                      >
+                        + Add Deliverable
+                      </Link>
+                    }
                   />
                 ) : (
                   <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-xs">
@@ -419,7 +424,8 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                           <TableHead>Deliverable</TableHead>
                           <TableHead>Version</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Updated</TableHead>
+                          <TableHead>Attachment</TableHead>
+                          <TableHead className="text-right">Submission Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -429,18 +435,41 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                               {del.title}
                             </TableCell>
                             <TableCell className="text-xs text-text-secondary font-mono">
-                              {del.version}
+                              {del.version || 'v1.0'}
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={del.status === 'Approved' ? 'success' : 'default'}
+                                variant={
+                                  del.status === 'APPROVED'
+                                    ? 'success'
+                                    : del.status === 'SUBMITTED'
+                                    ? 'brand'
+                                    : del.status === 'REVISION_REQUIRED'
+                                    ? 'warning'
+                                    : 'default'
+                                }
                                 size="sm"
                               >
-                                {del.status}
+                                {del.status.replace('_', ' ')}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right text-xs text-text-secondary">
-                              {del.updatedAt}
+                            <TableCell className="text-xs">
+                              {del.attachmentUrl ? (
+                                <a
+                                  href={del.attachmentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-brand-forest dark:text-brand-sage hover:underline"
+                                >
+                                  <span>{del.attachmentType}</span>
+                                  <ExternalLink size={10} />
+                                </a>
+                              ) : (
+                                <span className="text-text-muted">{del.attachmentType}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-text-secondary whitespace-nowrap">
+                              {del.submissionDate}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -451,36 +480,48 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
               </div>
             </TabsContent>
 
-            {/* Tab 3: Payment Summary Preview */}
+            {/* Tab 3: Payments */}
             <TabsContent value="payments">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-text-primary">
-                      Milestone Invoicing
+                      Milestone Invoicing & Payments
                     </h3>
                     <p className="text-xs text-text-secondary">
-                      Track deposit releases and outstanding milestone settlements.
+                      Outstanding balance is strictly calculated as Budget minus Completed payments.
                     </p>
                   </div>
-                  <Badge variant="outline" size="sm" className="text-[11px]">
-                    Phase 9 Preview
-                  </Badge>
+                  <Link
+                    href="/payments"
+                    className="text-xs font-medium text-brand-forest dark:text-brand-sage hover:underline flex items-center gap-1"
+                  >
+                    <span>Payments Ledger</span>
+                    <ArrowUpRight size={13} />
+                  </Link>
                 </div>
 
                 {payments.length === 0 ? (
                   <EmptyState
                     icon={<CreditCard size={20} className="text-text-secondary" />}
-                    title="No payment milestones"
-                    description="Invoices linked to this project will appear here."
+                    title="No payment records"
+                    description="Recorded payments and milestone invoices will appear here."
+                    action={
+                      <Link
+                        href="/payments"
+                        className="inline-flex items-center justify-center rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-brand-primary-hover"
+                      >
+                        + Record Payment
+                      </Link>
+                    }
                   />
                 ) : (
                   <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-xs">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Milestone</TableHead>
-                          <TableHead>Due Date</TableHead>
+                          <TableHead>Payment Date</TableHead>
+                          <TableHead>Method & Ref</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-right">Status</TableHead>
                         </TableRow>
@@ -488,18 +529,31 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                       <TableBody>
                         {payments.map((p) => (
                           <TableRow key={p.id}>
-                            <TableCell className="font-medium text-xs sm:text-sm text-text-primary">
-                              {p.milestoneTitle}
+                            <TableCell className="text-xs text-text-secondary whitespace-nowrap">
+                              {p.paymentDate}
                             </TableCell>
-                            <TableCell className="text-xs text-text-secondary">
-                              {p.dueDate}
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-medium text-text-primary">
+                                  {p.paymentMethod}
+                                </span>
+                                <span className="text-[11px] text-text-muted font-mono">
+                                  {p.reference}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right font-medium text-xs sm:text-sm font-mono text-text-primary">
                               {formatINR(p.amount)}
                             </TableCell>
                             <TableCell className="text-right">
                               <Badge
-                                variant={p.status === 'Completed' ? 'success' : 'warning'}
+                                variant={
+                                  p.status === 'Completed'
+                                    ? 'success'
+                                    : p.status === 'Pending'
+                                    ? 'warning'
+                                    : 'error'
+                                }
                                 size="sm"
                               >
                                 {p.status}
@@ -509,53 +563,6 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Tab 4: Recent Activity */}
-            <TabsContent value="activity">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-text-primary">
-                    Project Sprint History
-                  </h3>
-                  <Badge variant="outline" size="sm" className="text-[11px]">
-                    Timeline
-                  </Badge>
-                </div>
-
-                {activities.length === 0 ? (
-                  <EmptyState
-                    icon={<Activity size={20} className="text-text-secondary" />}
-                    title="No activity recorded"
-                    description="Sprint updates, milestone sign-offs, and file handovers will appear here."
-                  />
-                ) : (
-                  <div className="rounded-xl border border-border bg-surface p-5 shadow-xs">
-                    <div className="relative pl-6 border-l border-border-subtle space-y-5">
-                      {activities.map((act) => (
-                        <div key={act.id} className="relative">
-                          <div className="absolute -left-[31px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-sage-light text-brand-forest dark:text-brand-sage border border-brand-sage/40">
-                            <Sparkles size={11} />
-                          </div>
-                          <div>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                              <h4 className="text-xs sm:text-sm font-semibold text-text-primary">
-                                {act.title}
-                              </h4>
-                              <span className="text-[11px] text-text-muted">
-                                {act.timestamp}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-text-secondary leading-relaxed">
-                              {act.description}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
@@ -572,7 +579,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                 <button
                   type="button"
                   onClick={() => setIsEditOpen(true)}
-                  className="text-xs font-medium text-brand-forest dark:text-brand-sage hover:underline flex items-center gap-1"
+                  className="text-xs font-medium text-brand-forest dark:text-brand-sage hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Pencil size={12} />
                   <span>Edit</span>
@@ -656,7 +663,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
         onClose={() => setIsEditOpen(false)}
         onSave={handleSaveProject}
         initialData={project}
-        clients={INITIAL_CLIENTS}
+        clients={clients}
       />
 
       {/* Delete Confirmation Modal */}

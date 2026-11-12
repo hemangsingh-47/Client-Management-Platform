@@ -10,11 +10,12 @@ import {
   ClientDeleteModal,
   ClientFormData,
 } from '@/components/clients';
-import { INITIAL_CLIENTS, Client } from '@/lib/mock-data/clients';
+import { Client } from '@/lib/mock-data/clients';
+import { useAppContext } from '@/context/app-context';
 import { Plus } from 'lucide-react';
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
+  const { clients, addClient, updateClient, deleteClient } = useAppContext();
 
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -44,49 +45,32 @@ export default function ClientsPage() {
   // Save (Create or Update) client
   const handleSaveClient = (data: ClientFormData) => {
     if (editingClient) {
-      // Update existing
-      setClients((prev) =>
-        prev.map((c) =>
-          c.id === editingClient.id
-            ? {
-                ...c,
-                name: data.name,
-                companyName: data.companyName,
-                email: data.email,
-                phone: data.phone,
-                address: data.address,
-                status: data.status,
-                notes: data.notes,
-                lastActivity: 'Just now',
-              }
-            : c
-        )
-      );
-    } else {
-      // Create new
-      const newClient: Client = {
-        id: `cli-${Date.now()}`,
+      updateClient(editingClient.id, {
         name: data.name,
-        companyName: data.companyName || undefined,
+        companyName: data.companyName,
         email: data.email,
-        phone: data.phone || undefined,
-        address: data.address || undefined,
-        notes: data.notes || undefined,
+        phone: data.phone,
+        address: data.address,
         status: data.status,
-        createdAt: 'Today',
-        totalProjects: 0,
-        totalPaid: 0,
-        outstanding: 0,
-        lastActivity: 'Just now',
-      };
-      setClients((prev) => [newClient, ...prev]);
+        notes: data.notes,
+      });
+    } else {
+      addClient({
+        name: data.name,
+        companyName: data.companyName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        notes: data.notes,
+        status: data.status,
+      });
     }
   };
 
   // Confirm delete client
   const handleConfirmDelete = () => {
     if (!deletingClient) return;
-    setClients((prev) => prev.filter((c) => c.id !== deletingClient.id));
+    deleteClient(deletingClient.id);
     setDeletingClient(null);
   };
 

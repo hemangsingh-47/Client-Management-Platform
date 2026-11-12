@@ -14,3 +14,4 @@ export * from './table';
 export * from './skeleton';
 export * from './empty-state';
 export * from './form-field';
+export * from './progress-bar';

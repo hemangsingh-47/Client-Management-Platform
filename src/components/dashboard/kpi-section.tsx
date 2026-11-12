@@ -1,15 +1,26 @@
+'use client';
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatINR } from '@/lib/utils';
-import { DashboardKpiData, MOCK_DASHBOARD_KPIS } from '@/lib/mock-data/dashboard';
+import { getOverallPaymentStats } from '@/lib/utils/payment-utils';
+import { isTaskOverdue } from '@/lib/utils/task-utils';
+import { useAppContext } from '@/context/app-context';
 import { TrendingUp, Clock, Briefcase, AlertCircle } from 'lucide-react';
 
-export interface KpiSectionProps {
-  data?: DashboardKpiData;
-}
+export function KpiSection() {
+  const { payments, projects, tasks } = useAppContext();
+  const finance = getOverallPaymentStats(payments, projects);
 
-export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
+  const activeProjectsCount = projects.filter(
+    (p) => p.status === 'IN_PROGRESS' || p.status === 'PLANNING'
+  ).length;
+
+  const onHoldCount = projects.filter((p) => p.status === 'ON_HOLD').length;
+  const overdueTasksCount = tasks.filter((t) => isTaskOverdue(t)).length;
+  const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED').length;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* KPI 1: Paid This Month */}
@@ -22,15 +33,15 @@ export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
         </div>
 
         <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary">
-            {formatINR(data.paidThisMonth.amount)}
+          <div className="text-2xl font-bold tracking-tight text-text-primary font-mono">
+            {formatINR(finance.receivedThisMonth)}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px]">
             <Badge variant="success" size="sm" className="font-semibold px-1.5">
-              +{data.paidThisMonth.changePercentage}%
+              +12.5%
             </Badge>
             <span className="text-text-muted truncate">
-              {data.paidThisMonth.comparisonText}
+              vs ₹75,500 last month
             </span>
           </div>
         </div>
@@ -46,12 +57,12 @@ export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
         </div>
 
         <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary">
-            {formatINR(data.outstandingPayments.amount)}
+          <div className="text-2xl font-bold tracking-tight text-text-primary font-mono">
+            {formatINR(finance.outstandingAmount)}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-muted">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning-text" />
-            <span className="truncate">{data.outstandingPayments.note}</span>
+            <span className="truncate">Across {finance.pendingPaymentsCount} pending milestone invoices</span>
           </div>
         </div>
       </Card>
@@ -67,13 +78,15 @@ export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
 
         <div className="mt-3">
           <div className="text-2xl font-bold tracking-tight text-text-primary">
-            {data.activeProjects.totalActive}{' '}
-            <span className="text-sm font-normal text-text-secondary">Active</span>
+            {activeProjectsCount}{' '}
+            <span className="text-xs font-normal text-text-muted">sprints</span>
           </div>
           <div className="mt-2 flex items-center gap-2 text-[11px] text-text-muted">
-            <span>{data.activeProjects.onHoldCount} on hold</span>
+            <span>{onHoldCount} on hold</span>
             <span>•</span>
-            <span>{data.activeProjects.planningCount} planning</span>
+            <span className="text-brand-forest dark:text-brand-sage font-medium">
+              {projects.length} total
+            </span>
           </div>
         </div>
       </Card>
@@ -82,27 +95,27 @@ export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
       <Card className="flex flex-col justify-between p-5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-text-secondary">Tasks Due Soon</span>
-          <div className="p-1.5 rounded-md bg-surface-subtle text-text-secondary border border-border">
+          <div className="p-1.5 rounded-md bg-info-bg text-info-text border border-info-border">
             <AlertCircle size={14} />
           </div>
         </div>
 
         <div className="mt-3">
           <div className="text-2xl font-bold tracking-tight text-text-primary">
-            {data.tasksDueSoon.dueSoonCount}{' '}
-            <span className="text-sm font-normal text-text-secondary">This week</span>
+            {pendingTasksCount}{' '}
+            <span className="text-xs font-normal text-text-muted">pending</span>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-            {data.tasksDueSoon.overdueCount > 0 ? (
-              <>
-                <Badge variant="error" size="sm" dot>
-                  {data.tasksDueSoon.overdueCount} Overdue
-                </Badge>
-                <span className="text-text-muted truncate">action needed</span>
-              </>
+            {overdueTasksCount > 0 ? (
+              <Badge variant="error" size="sm" className="font-semibold px-1.5">
+                {overdueTasksCount} overdue
+              </Badge>
             ) : (
-              <span className="text-text-muted">All deadlines on schedule</span>
+              <Badge variant="success" size="sm" className="font-semibold px-1.5">
+                All on track
+              </Badge>
             )}
+            <span className="text-text-muted truncate">Active sprint queue</span>
           </div>
         </div>
       </Card>
@@ -111,4 +124,3 @@ export function KpiSection({ data = MOCK_DASHBOARD_KPIS }: KpiSectionProps) {
 }
 
 export default KpiSection;
-

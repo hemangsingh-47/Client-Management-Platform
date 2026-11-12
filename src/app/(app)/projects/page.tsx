@@ -16,16 +16,18 @@ import {
   SortOptionValue,
   ViewMode,
 } from '@/components/projects';
-import {
-  INITIAL_PROJECTS,
-  Project,
-  getProjectClient,
-} from '@/lib/mock-data/projects';
-import { INITIAL_CLIENTS } from '@/lib/mock-data/clients';
+import { Project, getProjectClient } from '@/lib/mock-data/projects';
+import { useAppContext } from '@/context/app-context';
 import { Plus } from 'lucide-react';
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const {
+    projects,
+    clients,
+    addProject,
+    updateProject,
+    deleteProject,
+  } = useAppContext();
 
   // Filters & View state
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +64,7 @@ export default function ProjectsPage() {
       result = result.filter((p) => {
         const titleMatch = p.title.toLowerCase().includes(q);
         const descMatch = p.description.toLowerCase().includes(q);
-        const client = getProjectClient(p.clientId, INITIAL_CLIENTS);
+        const client = getProjectClient(p.clientId, clients);
         const clientNameMatch =
           client?.name.toLowerCase().includes(q) ||
           (client?.companyName && client.companyName.toLowerCase().includes(q));
@@ -87,7 +89,7 @@ export default function ProjectsPage() {
     });
 
     return result;
-  }, [projects, searchQuery, statusFilter, priorityFilter, sortBy]);
+  }, [projects, clients, searchQuery, statusFilter, priorityFilter, sortBy]);
 
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
@@ -121,28 +123,7 @@ export default function ProjectsPage() {
   // Save (Create or Update)
   const handleSaveProject = (data: ProjectFormData) => {
     if (editingProject) {
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === editingProject.id
-            ? {
-                ...p,
-                title: data.title,
-                clientId: data.clientId,
-                description: data.description,
-                budget: data.budget,
-                startDate: data.startDate,
-                deadline: data.deadline,
-                status: data.status,
-                priority: data.priority,
-                progress: data.progress,
-                notes: data.notes || undefined,
-              }
-            : p
-        )
-      );
-    } else {
-      const newProj: Project = {
-        id: `proj-${Date.now()}`,
+      updateProject(editingProject.id, {
         title: data.title,
         clientId: data.clientId,
         description: data.description,
@@ -153,16 +134,27 @@ export default function ProjectsPage() {
         priority: data.priority,
         progress: data.progress,
         notes: data.notes || undefined,
-        createdAt: 'Today',
-      };
-      setProjects((prev) => [newProj, ...prev]);
+      });
+    } else {
+      addProject({
+        title: data.title,
+        clientId: data.clientId,
+        description: data.description,
+        budget: data.budget,
+        startDate: data.startDate,
+        deadline: data.deadline,
+        status: data.status,
+        priority: data.priority,
+        progress: data.progress,
+        notes: data.notes || undefined,
+      });
     }
   };
 
   // Confirm delete
   const handleConfirmDelete = () => {
     if (!deletingProject) return;
-    setProjects((prev) => prev.filter((p) => p.id !== deletingProject.id));
+    deleteProject(deletingProject.id);
     setDeletingProject(null);
   };
 
@@ -207,7 +199,7 @@ export default function ProjectsPage() {
       {viewMode === 'list' ? (
         <ProjectListView
           projects={filteredProjects}
-          clients={INITIAL_CLIENTS}
+          clients={clients}
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
           onAddNew={handleOpenCreate}
@@ -217,7 +209,7 @@ export default function ProjectsPage() {
       ) : (
         <ProjectGridView
           projects={filteredProjects}
-          clients={INITIAL_CLIENTS}
+          clients={clients}
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
           onAddNew={handleOpenCreate}
@@ -235,7 +227,7 @@ export default function ProjectsPage() {
         }}
         onSave={handleSaveProject}
         initialData={editingProject}
-        clients={INITIAL_CLIENTS}
+        clients={clients}
       />
 
       {/* Delete Confirmation Modal */}

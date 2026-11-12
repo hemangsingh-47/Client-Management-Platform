@@ -1,31 +1,41 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge, BadgeVariant } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatINR } from '@/lib/utils';
-import { DashboardProject, MOCK_ACTIVE_PROJECTS, ProjectStatusType } from '@/lib/mock-data/dashboard';
+import { useAppContext } from '@/context/app-context';
+import { ProjectStatus } from '@/types/project';
 import { ArrowUpRight, Briefcase } from 'lucide-react';
 
-export interface ActiveProjectsTableProps {
-  projects?: DashboardProject[];
-}
+export function ActiveProjectsTable() {
+  const { projects, clients } = useAppContext();
 
-export function ActiveProjectsTable({ projects = MOCK_ACTIVE_PROJECTS }: ActiveProjectsTableProps) {
-  const getStatusBadgeVariant = (status: ProjectStatusType): BadgeVariant => {
+  const getStatusBadgeVariant = (status: ProjectStatus): BadgeVariant => {
     switch (status) {
-      case 'In Progress':
+      case 'IN_PROGRESS':
         return 'brand';
-      case 'Planning':
+      case 'PLANNING':
         return 'warning';
-      case 'On Hold':
+      case 'ON_HOLD':
         return 'default';
-      case 'Completed':
+      case 'COMPLETED':
         return 'success';
+      case 'CANCELLED':
+        return 'error';
       default:
         return 'default';
     }
   };
+
+  const getClientName = (clientId: string) => {
+    const c = clients.find((client) => client.id === clientId);
+    return c?.companyName || c?.name || 'Client';
+  };
+
+  const displayProjects = projects.slice(0, 5);
 
   return (
     <Card className="p-0 overflow-hidden">
@@ -45,12 +55,15 @@ export function ActiveProjectsTable({ projects = MOCK_ACTIVE_PROJECTS }: ActiveP
           className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline group"
         >
           <span>View all</span>
-          <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          <ArrowUpRight
+            size={13}
+            className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+          />
         </Link>
       </div>
 
       {/* Projects Table or Empty State */}
-      {projects.length > 0 ? (
+      {displayProjects.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface-subtle border-b border-border-subtle text-[11px] uppercase tracking-wider text-text-secondary font-medium select-none">
@@ -64,29 +77,29 @@ export function ActiveProjectsTable({ projects = MOCK_ACTIVE_PROJECTS }: ActiveP
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle bg-surface">
-              {projects.map((proj) => (
+              {displayProjects.map((proj) => (
                 <tr
                   key={proj.id}
                   className="hover:bg-surface-hover/70 transition-colors group cursor-pointer"
                 >
                   {/* Project Title */}
                   <td className="py-3 px-4 sm:px-5">
-                    <Link href="/projects" className="block">
+                    <Link href={`/projects/${proj.id}`} className="block">
                       <span className="font-medium text-text-primary group-hover:text-brand-primary transition-colors">
-                        {proj.name}
+                        {proj.title}
                       </span>
                     </Link>
                   </td>
 
                   {/* Client */}
                   <td className="py-3 px-3 text-xs text-text-secondary">
-                    {proj.client}
+                    {getClientName(proj.clientId)}
                   </td>
 
                   {/* Status Badge */}
                   <td className="py-3 px-3">
                     <Badge variant={getStatusBadgeVariant(proj.status)} size="sm" dot>
-                      {proj.status}
+                      {proj.status.replace('_', ' ')}
                     </Badge>
                   </td>
 
@@ -133,4 +146,3 @@ export function ActiveProjectsTable({ projects = MOCK_ACTIVE_PROJECTS }: ActiveP
 }
 
 export default ActiveProjectsTable;
-
