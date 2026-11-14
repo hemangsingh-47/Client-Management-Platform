@@ -19,22 +19,22 @@ export default function DashboardPage() {
       {/* 2. Business Overview: 4 KPI Cards */}
       <KpiSection />
 
-      {/* 3. Section 1: Active Projects Table (65%) + Upcoming Tasks (35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-8">
+      {/* 3. Section 1: Active Projects Table + Upcoming Tasks */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+        <div className="xl:col-span-8">
           <ActiveProjectsTable />
         </div>
-        <div className="lg:col-span-4">
+        <div className="xl:col-span-4">
           <UpcomingTasksList />
         </div>
       </div>
 
-      {/* 4. Section 2: Earnings Overview (65%) + Recent Activity (35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-8">
+      {/* 4. Section 2: Earnings Overview + Recent Activity */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+        <div className="xl:col-span-8">
           <EarningsChart />
         </div>
-        <div className="lg:col-span-4">
+        <div className="xl:col-span-4">
           <RecentActivityFeed />
         </div>
       </div>

@@ -22,7 +22,7 @@ export function KpiSection() {
   const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED').length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {/* KPI 1: Paid This Month */}
       <Card className="flex flex-col justify-between p-5 hover:border-brand-primary/40 transition-all">
         <div className="flex items-center justify-between">

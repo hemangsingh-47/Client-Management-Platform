@@ -22,14 +22,16 @@ export function DashboardHeader({
   const { clients, addProject } = useAppContext();
 
   useEffect(() => {
-    setFormattedDate(
-      new Date().toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    );
+    queueMicrotask(() => {
+      setFormattedDate(
+        new Date().toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      );
+    });
   }, []);
 
   const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

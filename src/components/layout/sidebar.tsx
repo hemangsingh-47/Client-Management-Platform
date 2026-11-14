@@ -19,10 +19,22 @@ export function Sidebar() {
       aria-label="Sidebar navigation"
       className={cn(
         'hidden lg:flex flex-col justify-between shrink-0 h-screen sticky top-0',
-        'border-r border-border bg-surface transition-[width] duration-200 ease-in-out z-30 select-none',
+        'border-r border-border bg-surface transition-[width] duration-200 ease-in-out z-30 select-none relative',
         isCollapsed ? 'w-16' : 'w-64'
       )}
     >
+      {/* Floating Border Edge Toggle Button */}
+      <Tooltip content={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} position="right">
+        <button
+          type="button"
+          onClick={toggleCollapse}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute -right-3 top-5 z-40 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-text-secondary hover:text-text-primary hover:bg-surface-hover shadow-xs transition-colors cursor-pointer"
+        >
+          {isCollapsed ? <ChevronRight size={13} strokeWidth={2.5} /> : <ChevronLeft size={13} strokeWidth={2.5} />}
+        </button>
+      </Tooltip>
+
       {/* Top Section: Brand + Workspace + Main Nav */}
       <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         {/* Brand Area */}
@@ -32,19 +44,30 @@ export function Sidebar() {
             isCollapsed ? 'justify-center px-2' : 'justify-between'
           )}
         >
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-lg"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-forest text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-              <Leaf size={16} strokeWidth={2.2} />
-            </div>
-            {!isCollapsed && (
+          {isCollapsed ? (
+            <Tooltip content="Click to expand sidebar" position="right">
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                aria-label="Expand sidebar"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-forest text-white shadow-xs hover:scale-105 transition-transform shrink-0 cursor-pointer"
+              >
+                <Leaf size={16} strokeWidth={2.2} />
+              </button>
+            </Tooltip>
+          ) : (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-lg"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-forest text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                <Leaf size={16} strokeWidth={2.2} />
+              </div>
               <span className="font-bold text-base tracking-tight text-text-primary leading-none">
                 {APP_CONFIG.name}
               </span>
-            )}
-          </Link>
+            </Link>
+          )}
 
           {!isCollapsed && (
             <Tooltip content="Collapse sidebar" position="bottom">

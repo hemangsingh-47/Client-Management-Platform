@@ -17,24 +17,17 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 const COLLAPSE_STORAGE_KEY = 'freelancehub-sidebar-collapsed';
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  // Always initialize to false so server HTML and initial client hydration match 100%
+  // Always initialize to false (fully expanded)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
-  // Sync saved collapse preference after initial hydration
+  // Ensure default is expanded on initial load
   useEffect(() => {
-    const frameId = requestAnimationFrame(() => {
-      try {
-        const stored = localStorage.getItem(COLLAPSE_STORAGE_KEY);
-        if (stored === 'true') {
-          setIsCollapsed(true);
-        }
-      } catch {
-        // storage unavailable
-      }
-    });
-
-    return () => cancelAnimationFrame(frameId);
+    try {
+      localStorage.removeItem(COLLAPSE_STORAGE_KEY);
+    } catch {
+      // storage unavailable
+    }
   }, []);
 
   const toggleCollapse = () => {
@@ -61,6 +54,18 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const openMobile = () => setIsMobileOpen(true);
   const closeMobile = () => setIsMobileOpen(false);
   const toggleMobile = () => setIsMobileOpen((prev) => !prev);
+
+  // Listen for Ctrl+B / Cmd+B keyboard shortcut to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleCollapse();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Close mobile drawer on resize to desktop
   useEffect(() => {

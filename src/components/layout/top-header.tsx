@@ -7,11 +7,11 @@ import { GlobalSearch } from '@/components/shared/global-search';
 import { NotificationButton } from '@/components/shared/notification-button';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { UserMenu } from '@/components/shared/user-menu';
-import { Menu, ChevronRight } from 'lucide-react';
+import { Menu, ChevronRight, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { MAIN_NAV_ITEMS, SECONDARY_NAV_ITEMS } from '@/config/navigation';
 
 export function TopHeader() {
-  const { openMobile } = useSidebar();
+  const { openMobile, isCollapsed, toggleCollapse } = useSidebar();
   const pathname = usePathname();
 
   // Find current active item title
@@ -22,8 +22,8 @@ export function TopHeader() {
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full shrink-0 items-center justify-between border-b border-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 transition-colors select-none">
-      {/* Left side: Mobile trigger + Breadcrumb / Title */}
-      <div className="flex items-center gap-3">
+      {/* Left side: Mobile trigger + Desktop Sidebar Toggle + Breadcrumb / Title */}
+      <div className="flex items-center gap-2.5">
         {/* Mobile menu button */}
         <button
           type="button"
@@ -32,6 +32,17 @@ export function TopHeader() {
           className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         >
           <Menu size={18} />
+        </button>
+
+        {/* Desktop Sidebar Toggle */}
+        <button
+          type="button"
+          onClick={toggleCollapse}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden lg:flex p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
         </button>
 
         {/* Breadcrumb / Title */}
@@ -58,4 +69,3 @@ export function TopHeader() {
 }
 
 export default TopHeader;
-
