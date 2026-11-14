@@ -1,0 +1,238 @@
+// FreelanceHub — Production Relational Database Schema
+// Phase 11: PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum DeliverableStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REVISION_REQUIRED
+}
+
+enum AttachmentType {
+  FIGMA
+  GITHUB
+  DOCUMENT
+  ARCHIVE
+  EXTERNAL_LINK
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CASH
+  OTHER
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+/// Client entity representing freelance clients or companies
+model Client {
+  id          String       @id @default(cuid())
+  name        String
+  email       String       @unique
+  companyName String?
+  phone       String?
+  address     String?
+  notes       String?
+  status      ClientStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  projects   Project[]
+  activities Activity[]
+
+  @@index([email])
+  @@index([status])
+  @@map("clients")
+}
+
+/// Project entity representing client work engagements
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  clientId    String
+  budget      Decimal       @db.Decimal(12, 2)
+  startDate   DateTime
+  deadline    DateTime
+  status      ProjectStatus @default(PLANNING)
+  priority    Priority      @default(MEDIUM)
+  progress    Int           @default(0)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relationships
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  tasks        Task[]
+  milestones   Milestone[]
+  deliverables Deliverable[]
+  payments     Payment[]
+  activities   Activity[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([priority])
+  @@map("projects")
+}
+
+/// Task entity representing actionable to-dos within a project
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  projectId   String
+  dueDate     DateTime
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relationships
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("tasks")
+}
+
+/// Milestone entity for high-level project targets and deadlines
+model Milestone {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  projectId   String
+  dueDate     DateTime
+  status      MilestoneStatus @default(PENDING)
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relationships
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("milestones")
+}
+
+/// Deliverable entity for work submissions, design files, and code links
+model Deliverable {
+  id             String            @id @default(cuid())
+  title          String
+  description    String?
+  projectId      String
+  submissionDate DateTime
+  attachmentUrl  String?
+  attachmentType AttachmentType    @default(EXTERNAL_LINK)
+  status         DeliverableStatus @default(PENDING)
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relationships
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([submissionDate])
+  @@index([status])
+  @@map("deliverables")
+}
+
+/// Payment entity representing financial transactions for project work
+model Payment {
+  id              String        @id @default(cuid())
+  projectId       String
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentDate     DateTime
+  paymentMethod   PaymentMethod
+  referenceNumber String?
+  status          PaymentStatus @default(COMPLETED)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships (Restrict on project so financial records cannot be orphaned or accidentally deleted)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([paymentDate])
+  @@index([status])
+  @@map("payments")
+}
+
+/// Activity entity recording audit logs of important business events
+model Activity {
+  id          String   @id @default(cuid())
+  projectId   String?
+  clientId    String?
+  type        String
+  description String
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client  Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
