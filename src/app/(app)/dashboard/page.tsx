@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import {
   DashboardHeader,
   KpiSection,
@@ -12,7 +12,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 pb-8">
       {/* 1. Page Header with Date Range Filter & New Project Action */}
-      <DashboardHeader />
+      <Suspense fallback={<div className="h-16 w-full animate-pulse bg-surface-subtle rounded-xl" />}>
+        <DashboardHeader />
+      </Suspense>
 
       {/* 2. Business Overview: 4 KPI Cards */}
       <KpiSection />

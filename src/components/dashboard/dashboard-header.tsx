@@ -63,9 +63,9 @@ export function DashboardHeader({
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">
               Overview
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-surface text-xs font-medium text-text-muted shadow-xs">
+            <span suppressHydrationWarning className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-surface text-xs font-medium text-text-muted shadow-xs">
               <Calendar size={13} className="text-brand-primary" />
-              <span>{formattedDate}</span>
+              <span suppressHydrationWarning>{formattedDate}</span>
             </span>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
