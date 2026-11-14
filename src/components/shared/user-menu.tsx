@@ -43,7 +43,7 @@ export function UserMenu() {
           'hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary'
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-forest text-brand-sage-light text-xs font-bold ring-1 ring-border shadow-2xs">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-forest to-brand-primary text-white text-xs font-semibold ring-1 ring-border shadow-xs">
           JD
         </div>
         <div className="hidden md:flex flex-col text-left pr-1">

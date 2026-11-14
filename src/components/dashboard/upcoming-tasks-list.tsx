@@ -78,7 +78,7 @@ export function UpcomingTasksList() {
                   checked={isDone}
                   onChange={() => toggleTaskCompleted(task.id)}
                   aria-label={`Mark "${task.title}" as completed`}
-                  className="mt-0.5 h-4 w-4 rounded border-border text-brand-primary focus:ring-brand-primary cursor-pointer accent-[#287A58]"
+                  className="mt-0.5 h-4 w-4 rounded border-border text-brand-primary focus:ring-brand-primary cursor-pointer accent-brand-primary"
                 />
 
                 {/* Task Details */}

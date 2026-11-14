@@ -10,7 +10,7 @@ import {
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6 max-w-[1440px] mx-auto pb-8">
+    <div className="space-y-6 pb-8">
       {/* 1. Page Header with Date Range Filter & New Project Action */}
       <DashboardHeader />
 

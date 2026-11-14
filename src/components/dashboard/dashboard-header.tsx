@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { Modal, ModalFooter } from '@/components/ui/modal';
-import { Input } from '@/components/ui/input';
-import { FormField } from '@/components/ui/form-field';
+import { ProjectFormModal, ProjectFormData } from '@/components/projects/project-form-modal';
+import { useAppContext } from '@/context/app-context';
 import { Plus, Calendar } from 'lucide-react';
 
 export interface DashboardHeaderProps {
@@ -19,6 +18,19 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const [currentRange, setCurrentRange] = useState(selectedRange);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formattedDate, setFormattedDate] = useState('Saturday, 7 Nov 2026');
+  const { clients, addProject } = useAppContext();
+
+  useEffect(() => {
+    setFormattedDate(
+      new Date().toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    );
+  }, []);
 
   const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -26,8 +38,21 @@ export function DashboardHeader({
     onRangeChange?.(val);
   };
 
-  // Format a realistic, professional current date string
-  const formattedDate = 'Saturday, 7 November 2026';
+  const handleCreateProject = (data: ProjectFormData) => {
+    addProject({
+      title: data.title,
+      clientId: data.clientId,
+      description: data.description,
+      budget: data.budget,
+      startDate: data.startDate,
+      deadline: data.deadline,
+      status: data.status,
+      priority: data.priority,
+      progress: data.progress,
+      notes: data.notes,
+    });
+    setIsModalOpen(false);
+  };
 
   return (
     <>
@@ -38,13 +63,13 @@ export function DashboardHeader({
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">
               Overview
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-border bg-surface text-xs font-medium text-text-muted">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-surface text-xs font-medium text-text-muted shadow-xs">
               <Calendar size={13} className="text-brand-primary" />
               <span>{formattedDate}</span>
             </span>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
-            Here&apos;s what&apos;s happening with your freelance business.
+            Here&apos;s what&apos;s happening with your freelance business today.
           </p>
         </div>
 
@@ -75,54 +100,15 @@ export function DashboardHeader({
         </div>
       </div>
 
-      {/* New Project UI-only Modal Dialog */}
-      <Modal
+      {/* Real Project Form Modal */}
+      <ProjectFormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create New Project"
-        description="Define a new client engagement scope and budget."
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-surface-subtle border border-border text-xs text-text-muted leading-relaxed">
-            <span className="font-semibold text-text-primary">Phase 4 Notice:</span> This action is a UI shell demonstration. Database and project CRUD operations will be connected in Phase 6.
-          </div>
-
-          <FormField id="p-name" label="Project Title" required>
-            <Input id="p-name" placeholder="e.g. Design System & Frontend" />
-          </FormField>
-
-          <FormField id="p-client" label="Client Organization" required>
-            <Input id="p-client" placeholder="e.g. Acme Studio" />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormField id="p-budget" label="Budget (₹ INR)" required>
-              <Input id="p-budget" placeholder="50000" type="number" />
-            </FormField>
-
-            <FormField id="p-date" label="Target Deadline">
-              <Input id="p-date" type="date" />
-            </FormField>
-          </div>
-        </div>
-
-        <ModalFooter>
-          <Button variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsModalOpen(false)}
-          >
-            Create Project (UI Shell)
-          </Button>
-        </ModalFooter>
-      </Modal>
+        onSave={handleCreateProject}
+        clients={clients}
+      />
     </>
   );
 }
 
 export default DashboardHeader;
-

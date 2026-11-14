@@ -47,8 +47,8 @@ export function ProjectFilters({
       {/* Search Input */}
       <div className="relative flex-1 max-w-md">
         <Input
-          size="md"
-          leftIcon={<Search size={15} />}
+          size="sm"
+          leftIcon={<Search size={14} />}
           placeholder="Search by project title or client..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

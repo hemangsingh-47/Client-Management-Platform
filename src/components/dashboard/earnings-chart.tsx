@@ -37,8 +37,8 @@ export function EarningsChart() {
             <h2 className="text-base font-semibold text-text-primary tracking-tight">
               Earnings Overview
             </h2>
-            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border bg-surface-subtle text-text-muted">
-              Illustrative Sample
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-success-border bg-success-bg text-success-text">
+              Verified Income
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-1">

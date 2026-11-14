@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export function Table({ className, children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="relative w-full overflow-x-auto rounded-xl border border-border bg-surface">
+    <div className="relative w-full overflow-x-auto">
       <table className={cn('w-full caption-bottom text-sm text-left', className)} {...props}>
         {children}
       </table>
@@ -18,7 +18,10 @@ export function TableHeader({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={cn('bg-surface-subtle border-b border-border text-xs uppercase text-text-secondary', className)}
+      className={cn(
+        'bg-surface-subtle border-b border-border text-[11px] uppercase font-semibold tracking-wider text-text-secondary select-none',
+        className
+      )}
       {...props}
     >
       {children}
@@ -60,7 +63,10 @@ export function TableRow({
 }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn('transition-colors hover:bg-surface-hover/60 data-[state=selected]:bg-surface-hover', className)}
+      className={cn(
+        'transition-colors hover:bg-surface-hover/70 data-[state=selected]:bg-surface-hover',
+        className
+      )}
       {...props}
     >
       {children}
@@ -75,7 +81,10 @@ export function TableHead({
 }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn('h-10 px-4 text-left align-middle font-medium text-text-secondary tracking-wider text-[11px]', className)}
+      className={cn(
+        'h-10 px-4 sm:px-5 text-left align-middle font-semibold text-text-secondary tracking-wider text-[11px]',
+        className
+      )}
       {...props}
     >
       {children}
@@ -89,7 +98,7 @@ export function TableCell({
   ...props
 }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn('p-4 align-middle text-text-primary text-sm', className)} {...props}>
+    <td className={cn('px-4 sm:px-5 py-3.5 align-middle text-text-primary text-sm', className)} {...props}>
       {children}
     </td>
   );
@@ -101,9 +110,10 @@ export function TableCaption({
   ...props
 }: React.HTMLAttributes<HTMLTableCaptionElement>) {
   return (
-    <caption className={cn('mt-4 text-xs text-text-muted', className)} {...props}>
+    <caption className={cn('mt-4 text-xs text-text-secondary', className)} {...props}>
       {children}
     </caption>
   );
 }
 
+export default Table;

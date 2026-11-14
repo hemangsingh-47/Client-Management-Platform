@@ -38,11 +38,11 @@ export function RevenueChart({ data }: RevenueChartProps) {
         {/* Legend */}
         <div className="flex items-center gap-4 text-xs shrink-0">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#287A58]" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-brand-primary" />
             <span className="text-text-secondary">Received ({formatINR(totalReceivedInView)})</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#D97706]" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-amber-500" />
             <span className="text-text-secondary">Outstanding ({formatINR(totalOutstandingInView)})</span>
           </div>
         </div>
@@ -65,7 +65,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
               <div className="w-full max-w-[48px] flex items-end justify-center gap-1.5 h-[190px]">
                 {/* Received Bar */}
                 <div
-                  className="w-1/2 bg-[#287A58] hover:bg-[#173F35] rounded-t-sm transition-all relative group/bar"
+                  className="w-1/2 bg-brand-primary hover:bg-brand-primary-hover rounded-t-sm transition-all relative group/bar"
                   style={{ height: `${receivedHeight}px` }}
                 >
                   <span className="sr-only">Received: {formatINR(point.received)}</span>
@@ -73,7 +73,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
                 {/* Outstanding Bar */}
                 <div
-                  className="w-1/2 bg-[#D97706]/80 hover:bg-[#D97706] rounded-t-sm transition-all relative group/bar"
+                  className="w-1/2 bg-amber-500/80 hover:bg-amber-500 rounded-t-sm transition-all relative group/bar"
                   style={{ height: `${outstandingHeight}px` }}
                 >
                   <span className="sr-only">Outstanding: {formatINR(point.outstanding)}</span>

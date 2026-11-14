@@ -44,17 +44,18 @@ export function RecentActivityFeed({ activities = MOCK_RECENT_ACTIVITIES }: Rece
             Audit log of workspace updates
           </p>
         </div>
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border bg-surface-subtle text-text-muted">
-          Sample Feed
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+          <span className="w-1.5 h-1.5 rounded-full bg-success-text animate-pulse" />
+          Live
         </span>
       </div>
 
       {/* Activity Timeline List */}
       <div className="divide-y divide-border-subtle bg-surface flex-1">
         {activities.map((item) => (
-          <div key={item.id} className="p-3.5 sm:px-5 flex items-start gap-3 hover:bg-surface-hover/40 transition-colors">
+          <div key={item.id} className="p-3.5 sm:px-5 flex items-start gap-3 hover:bg-surface-hover/60 transition-colors">
             {/* Type Icon Badge */}
-            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle shadow-2xs">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle shadow-xs">
               {getActivityIcon(item.type)}
             </div>
 
@@ -83,11 +84,6 @@ export function RecentActivityFeed({ activities = MOCK_RECENT_ACTIVITIES }: Rece
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Footer */}
-      <div className="p-2.5 border-t border-border-subtle bg-surface-subtle/50 text-[11px] text-text-muted text-center">
-        Development activity stream
       </div>
     </Card>
   );

@@ -36,7 +36,7 @@ export function Sidebar() {
             href="/dashboard"
             className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-lg"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-forest text-brand-sage-light shadow-2xs group-hover:scale-105 transition-transform shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-forest text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
               <Leaf size={16} strokeWidth={2.2} />
             </div>
             {!isCollapsed && (

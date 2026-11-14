@@ -9,9 +9,9 @@ export function Card({ className, subtle = false, children, ...props }: CardProp
   return (
     <div
       className={cn(
-        'rounded-xl border border-border transition-colors',
+        'rounded-xl border border-border transition-all',
         subtle ? 'bg-surface-subtle' : 'bg-surface',
-        'shadow-xs',
+        'shadow-[0_1px_3px_0_rgb(0_0_0/0.04),0_1px_2px_-1px_rgb(0_0_0/0.04)] dark:shadow-none',
         className
       )}
       {...props}
@@ -93,3 +93,4 @@ export function CardFooter({
   );
 }
 
+export default Card;

@@ -29,19 +29,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-colors select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
+      'inline-flex items-center justify-center font-medium rounded-lg transition-all select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
 
     const variantStyles: Record<ButtonVariant, string> = {
       primary:
-        'bg-brand-primary text-white hover:bg-brand-primary-hover active:bg-brand-primary-active border border-transparent shadow-xs',
+        'bg-brand-primary text-white hover:bg-brand-primary-hover active:bg-brand-primary-active border border-brand-primary/20 shadow-[0_1px_2px_0_rgb(0_0_0/0.08)] active:translate-y-px',
       secondary:
-        'bg-surface text-text-primary border border-border hover:bg-surface-hover active:bg-surface-subtle shadow-xs',
+        'bg-surface text-text-primary border border-border hover:bg-surface-hover active:bg-surface-subtle shadow-[0_1px_2px_0_rgb(0_0_0/0.04)] active:translate-y-px',
       outline:
         'bg-transparent text-text-primary border border-border hover:bg-surface-hover active:bg-surface-subtle',
       ghost:
         'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover',
       danger:
-        'bg-error-bg text-error-text border border-error-border hover:opacity-90 active:opacity-100',
+        'bg-error-bg text-error-text border border-error-border/80 hover:bg-error-bg/80 active:translate-y-px',
     };
 
     const sizeStyles: Record<ButtonSize, string> = {
@@ -71,3 +71,4 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = 'Button';
 
+export default Button;

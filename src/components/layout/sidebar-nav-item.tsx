@@ -32,7 +32,7 @@ export function SidebarNavItem({ item, isCollapsed = false, onNavigate }: Sideba
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1',
         isCollapsed ? 'justify-center h-10 w-10 mx-auto' : 'px-3 py-2 gap-3 w-full',
         isActive
-          ? 'bg-brand-sage-light/60 text-brand-forest dark:bg-brand-forest/30 dark:text-brand-sage font-semibold shadow-2xs'
+          ? 'bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 dark:text-brand-sage font-semibold shadow-xs relative before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-brand-primary before:rounded-r-full'
           : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
       )}
     >

@@ -57,8 +57,8 @@ export function TaskFilters({
       {/* Search Bar */}
       <div className="relative flex-1 max-w-sm">
         <Input
-          size="md"
-          leftIcon={<Search size={15} />}
+          size="sm"
+          leftIcon={<Search size={14} />}
           placeholder="Search tasks..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

@@ -7,7 +7,7 @@ import { formatINR } from '@/lib/utils';
 import { getOverallPaymentStats } from '@/lib/utils/payment-utils';
 import { isTaskOverdue } from '@/lib/utils/task-utils';
 import { useAppContext } from '@/context/app-context';
-import { TrendingUp, Clock, Briefcase, AlertCircle } from 'lucide-react';
+import { TrendingUp, Clock, Briefcase, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export function KpiSection() {
   const { payments, projects, tasks } = useAppContext();
@@ -24,20 +24,22 @@ export function KpiSection() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* KPI 1: Paid This Month */}
-      <Card className="flex flex-col justify-between p-5">
+      <Card className="flex flex-col justify-between p-5 hover:border-brand-primary/40 transition-all">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-text-secondary">Paid This Month</span>
-          <div className="p-1.5 rounded-md bg-success-bg text-success-text border border-success-border">
-            <TrendingUp size={14} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Paid This Month
+          </span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-success-bg text-success-text border border-success-border/60">
+            <TrendingUp size={16} strokeWidth={2} />
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary font-mono">
+        <div className="mt-4">
+          <div className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary font-mono">
             {formatINR(finance.receivedThisMonth)}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-            <Badge variant="success" size="sm" className="font-semibold px-1.5">
+          <div className="mt-2.5 flex items-center gap-2 text-xs">
+            <Badge variant="success" size="sm" className="font-semibold px-2 py-0.5">
               +12.5%
             </Badge>
             <span className="text-text-muted truncate">
@@ -48,70 +50,80 @@ export function KpiSection() {
       </Card>
 
       {/* KPI 2: Outstanding Payments */}
-      <Card className="flex flex-col justify-between p-5">
+      <Card className="flex flex-col justify-between p-5 hover:border-warning-border transition-all">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-text-secondary">Outstanding Payments</span>
-          <div className="p-1.5 rounded-md bg-warning-bg text-warning-text border border-warning-border">
-            <Clock size={14} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Outstanding
+          </span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-warning-bg text-warning-text border border-warning-border/60">
+            <Clock size={16} strokeWidth={2} />
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary font-mono">
+        <div className="mt-4">
+          <div className="text-2xl sm:text-3xl font-bold tracking-tight text-warning-text font-mono">
             {formatINR(finance.outstandingAmount)}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-muted">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning-text" />
-            <span className="truncate">Across {finance.pendingPaymentsCount} pending milestone invoices</span>
+          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-text-muted">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning-text shrink-0" />
+            <span className="truncate">{finance.pendingPaymentsCount} pending milestone invoices</span>
           </div>
         </div>
       </Card>
 
       {/* KPI 3: Active Projects */}
-      <Card className="flex flex-col justify-between p-5">
+      <Card className="flex flex-col justify-between p-5 hover:border-brand-primary/40 transition-all">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-text-secondary">Active Projects</span>
-          <div className="p-1.5 rounded-md bg-brand-sage-light text-brand-forest dark:bg-brand-forest/40 dark:text-brand-sage border border-brand-sage/30">
-            <Briefcase size={14} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Active Projects
+          </span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-sage-light text-brand-forest dark:bg-brand-sage-light/20 dark:text-brand-sage border border-brand-sage/40">
+            <Briefcase size={16} strokeWidth={2} />
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary">
+        <div className="mt-4">
+          <div className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">
             {activeProjectsCount}{' '}
-            <span className="text-xs font-normal text-text-muted">sprints</span>
+            <span className="text-sm font-normal text-text-muted">sprints</span>
           </div>
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-text-muted">
+          <div className="mt-2.5 flex items-center gap-2 text-xs text-text-muted">
             <span>{onHoldCount} on hold</span>
             <span>•</span>
             <span className="text-brand-forest dark:text-brand-sage font-medium">
-              {projects.length} total
+              {projects.length} total projects
             </span>
           </div>
         </div>
       </Card>
 
       {/* KPI 4: Tasks Due Soon */}
-      <Card className="flex flex-col justify-between p-5">
+      <Card className="flex flex-col justify-between p-5 hover:border-info-border transition-all">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-text-secondary">Tasks Due Soon</span>
-          <div className="p-1.5 rounded-md bg-info-bg text-info-text border border-info-border">
-            <AlertCircle size={14} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Tasks Due Soon
+          </span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-info-bg text-info-text border border-info-border/60">
+            {overdueTasksCount > 0 ? (
+              <AlertCircle size={16} strokeWidth={2} className="text-error-text" />
+            ) : (
+              <CheckCircle2 size={16} strokeWidth={2} />
+            )}
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className="text-2xl font-bold tracking-tight text-text-primary">
+        <div className="mt-4">
+          <div className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">
             {pendingTasksCount}{' '}
-            <span className="text-xs font-normal text-text-muted">pending</span>
+            <span className="text-sm font-normal text-text-muted">pending</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <div className="mt-2.5 flex items-center gap-2 text-xs">
             {overdueTasksCount > 0 ? (
-              <Badge variant="error" size="sm" className="font-semibold px-1.5">
+              <Badge variant="error" size="sm" className="font-semibold px-2 py-0.5">
                 {overdueTasksCount} overdue
               </Badge>
             ) : (
-              <Badge variant="success" size="sm" className="font-semibold px-1.5">
+              <Badge variant="success" size="sm" className="font-semibold px-2 py-0.5">
                 All on track
               </Badge>
             )}

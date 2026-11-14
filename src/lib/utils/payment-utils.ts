@@ -97,6 +97,7 @@ export interface OverallPaymentStats {
   receivedThisMonth: number;
   outstandingAmount: number;
   pendingPaymentsCount: number;
+  pendingAmount: number;
 }
 
 /**
@@ -125,15 +126,16 @@ export function getOverallPaymentStats(
     return sum + summary.outstandingBalance;
   }, 0);
 
-  const pendingPaymentsCount = payments.filter(
-    (p) => p.status === 'Pending'
-  ).length;
+  const pendingPayments = payments.filter((p) => p.status === 'Pending');
+  const pendingPaymentsCount = pendingPayments.length;
+  const pendingAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return {
     totalEarnings,
     receivedThisMonth,
     outstandingAmount,
     pendingPaymentsCount,
+    pendingAmount,
   };
 }
 
