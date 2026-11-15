@@ -11,6 +11,8 @@ export interface Project {
   id: string;
   title: string;
   clientId: string;
+  clientName?: string;
+  companyName?: string;
   description: string;
   budget: number;
   startDate: string;
@@ -19,6 +21,12 @@ export interface Project {
   priority: ProjectPriority;
   progress: number;
   notes?: string;
+  totalPaid?: number;
+  outstanding?: number;
+  tasksCount?: number;
+  milestonesCount?: number;
+  deliverablesCount?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 

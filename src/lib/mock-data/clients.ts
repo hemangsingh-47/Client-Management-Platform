@@ -3,23 +3,8 @@
  * Realistic, typed development sample data for UI demonstration.
  */
 
-export type ClientStatus = 'ACTIVE' | 'INACTIVE';
-
-export interface Client {
-  id: string;
-  name: string;
-  email: string;
-  companyName?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-  status: ClientStatus;
-  createdAt: string;
-  totalProjects: number;
-  totalPaid: number;
-  outstanding: number;
-  lastActivity: string;
-}
+import type { Client, ClientStatus } from '@/types/client';
+export type { Client, ClientStatus };
 
 export type ClientProjectStatus = 'In Progress' | 'Planning' | 'On Hold' | 'Completed';
 

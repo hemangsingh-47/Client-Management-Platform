@@ -22,6 +22,8 @@ export interface Deliverable {
   id: string;
   title: string;
   projectId: string;
+  projectName?: string;
+  clientName?: string;
   description: string;
   submissionDate: string;
   status: DeliverableStatus;
