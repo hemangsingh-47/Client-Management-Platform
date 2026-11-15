@@ -1,12 +1,5 @@
 import React, { Suspense } from 'react';
-import { INITIAL_PROJECTS } from '@/lib/mock-data/projects';
 import { ProjectDetailsView } from '@/components/projects/project-details-view';
-
-export function generateStaticParams() {
-  return INITIAL_PROJECTS.map((project) => ({
-    id: project.id,
-  }));
-}
 
 export default async function ProjectDetailsPage({
   params,

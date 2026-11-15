@@ -93,22 +93,23 @@ export function PaymentTable({
   }
 
   const getStatusBadge = (status: PaymentStatus) => {
-    switch (status) {
-      case 'Completed':
+    const s = (status || '').toUpperCase();
+    switch (s) {
+      case 'COMPLETED':
         return (
           <Badge variant="success" size="sm" className="gap-1 inline-flex">
             <CheckCircle2 size={11} />
             <span>Completed</span>
           </Badge>
         );
-      case 'Pending':
+      case 'PENDING':
         return (
           <Badge variant="warning" size="sm" className="gap-1 inline-flex">
             <Clock size={11} />
             <span>Pending</span>
           </Badge>
         );
-      case 'Failed':
+      case 'FAILED':
       default:
         return (
           <Badge variant="error" size="sm" className="gap-1 inline-flex">
@@ -191,13 +192,21 @@ export function PaymentTable({
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary bg-surface-subtle px-2 py-0.5 rounded-md border border-border-subtle">
                     <CreditCard size={11} className="text-text-muted" />
-                    <span>{p.paymentMethod}</span>
+                    <span>
+                      {p.paymentMethod === 'BANK_TRANSFER'
+                        ? 'Bank Transfer'
+                        : p.paymentMethod === 'CASH'
+                        ? 'Cash'
+                        : p.paymentMethod === 'OTHER'
+                        ? 'Other'
+                        : p.paymentMethod}
+                    </span>
                   </span>
                 </TableCell>
 
                 {/* Reference */}
                 <TableCell className="text-xs font-mono text-text-muted whitespace-nowrap">
-                  {p.reference}
+                  {p.reference || p.referenceNumber || '—'}
                 </TableCell>
 
                 {/* Status */}

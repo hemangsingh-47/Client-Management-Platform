@@ -69,7 +69,7 @@ export default function PaymentsPage() {
         const clientMatch =
           client?.name.toLowerCase().includes(q) ||
           (client?.companyName && client.companyName.toLowerCase().includes(q));
-        const refMatch = p.reference.toLowerCase().includes(q);
+        const refMatch = (p.reference || p.referenceNumber || '').toLowerCase().includes(q);
         return Boolean(projectMatch || clientMatch || refMatch);
       });
     }

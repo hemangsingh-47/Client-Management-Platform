@@ -62,18 +62,18 @@ export function PaymentReceiptModal({
           <div className="mt-2.5">
             <Badge
               variant={
-                payment.status === 'Completed'
+                payment.status === 'Completed' || payment.status === 'COMPLETED'
                   ? 'success'
-                  : payment.status === 'Pending'
+                  : payment.status === 'Pending' || payment.status === 'PENDING'
                   ? 'warning'
                   : 'error'
               }
               size="md"
               className="gap-1 inline-flex"
             >
-              {payment.status === 'Completed' && <CheckCircle2 size={12} />}
-              {payment.status === 'Pending' && <Clock size={12} />}
-              {payment.status === 'Failed' && <AlertCircle size={12} />}
+              {(payment.status === 'Completed' || payment.status === 'COMPLETED') && <CheckCircle2 size={12} />}
+              {(payment.status === 'Pending' || payment.status === 'PENDING') && <Clock size={12} />}
+              {(payment.status === 'Failed' || payment.status === 'FAILED') && <AlertCircle size={12} />}
               <span>{payment.status}</span>
             </Badge>
           </div>

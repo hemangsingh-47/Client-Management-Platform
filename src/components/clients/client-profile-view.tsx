@@ -4,13 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  INITIAL_CLIENTS,
-  MOCK_CLIENT_PROJECTS,
-  MOCK_CLIENT_PAYMENTS,
-  MOCK_CLIENT_ACTIVITIES,
   Client,
   ClientProject,
+  ClientProjectStatus,
   ClientPayment,
+  PaymentMethod,
+  PaymentStatus,
   ClientActivity,
 } from '@/lib/mock-data/clients';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -45,31 +44,110 @@ import {
   Copy,
 } from 'lucide-react';
 
+import { clientsApi, ClientDetails } from '@/lib/api';
+
 export interface ClientProfileViewProps {
   clientId: string;
 }
 
+function normalizePaymentMethod(method?: string | null): PaymentMethod {
+  if (!method) return 'Bank Transfer';
+  const m = method.toUpperCase().replace(/\s+/g, '_');
+  if (m === 'UPI') return 'UPI';
+  if (m === 'CREDIT_CARD') return 'Credit Card';
+  if (m === 'STRIPE') return 'Stripe';
+  return 'Bank Transfer';
+}
+
+function normalizePaymentStatus(status?: string | null): PaymentStatus {
+  if (!status) return 'Pending';
+  const s = status.toUpperCase();
+  if (s === 'COMPLETED') return 'Completed';
+  if (s === 'PENDING') return 'Pending';
+  return 'Failed';
+}
+
 export function ClientProfileView({ clientId }: ClientProfileViewProps) {
   const router = useRouter();
-  const { clients, updateClient } = useAppContext();
+  const { clients, updateClient, payments: allPayments } = useAppContext();
 
-  // Find client in context or fallback to initial mock dataset
-  const currentClient =
-    clients.find((c) => c.id === clientId) ||
-    INITIAL_CLIENTS.find((c) => c.id === clientId) ||
-    INITIAL_CLIENTS[0];
-
-  const [client, setClient] = useState<Client>(currentClient);
+  const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Associated datasets
-  const projects: ClientProject[] = MOCK_CLIENT_PROJECTS[client.id] || [];
-  const payments: ClientPayment[] = MOCK_CLIENT_PAYMENTS[client.id] || [];
-  const activities: ClientActivity[] = MOCK_CLIENT_ACTIVITIES[client.id] || [];
+  // Fetch client details from database API
+  const fetchClient = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await clientsApi.getClientById(clientId);
+      setClientDetails(data);
+    } catch (err) {
+      console.error('Failed to load client profile from API:', err);
+      // Fallback to client in context if available
+      const fallback = clients.find((c) => c.id === clientId);
+      if (fallback) {
+        setClientDetails({
+          ...fallback,
+          projects: [],
+          recentActivities: [],
+        });
+      } else {
+        setLoadError(err instanceof Error ? err.message : 'Client not found');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clientId, clients]);
+
+  React.useEffect(() => {
+    fetchClient();
+  }, [fetchClient]);
+
+  // Derived datasets from database
+  const client = clientDetails || clients.find((c) => c.id === clientId);
+
+  const projects: ClientProject[] = (clientDetails?.projects || []).map((p) => ({
+    id: p.id,
+    clientId,
+    name: p.title,
+    status: (p.status === 'IN_PROGRESS'
+      ? 'In Progress'
+      : p.status === 'COMPLETED'
+      ? 'Completed'
+      : p.status === 'PLANNING'
+      ? 'Planning'
+      : 'On Hold') as ClientProjectStatus,
+    deadline: p.deadline,
+    budget: p.budget,
+    progress: p.progress,
+  }));
+
+  const payments: ClientPayment[] = allPayments
+    .filter((pay) => pay.clientId === clientId || clientDetails?.projects?.some((p) => p.id === pay.projectId))
+    .map((pay) => ({
+      id: pay.id,
+      clientId,
+      date: pay.paymentDate,
+      projectName: pay.projectName || 'Project Assignment',
+      method: normalizePaymentMethod(pay.paymentMethod),
+      amount: pay.amount,
+      status: normalizePaymentStatus(pay.status),
+    }));
+
+  const activities: ClientActivity[] = (clientDetails?.recentActivities || []).map((act) => ({
+    id: act.id,
+    clientId,
+    type: 'project_started',
+    title: act.type.replace(/_/g, ' '),
+    description: act.description,
+    timestamp: new Date(act.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+  }));
 
   // Computed metrics
-  const totalProjectsCount = projects.length || client.totalProjects;
+  const totalProjectsCount = client?.totalProjects || projects.length;
   const activeProjectsCount = projects.filter(
     (p) => p.status === 'In Progress' || p.status === 'Planning'
   ).length;
@@ -82,7 +160,8 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
     }
   };
 
-  const handleSaveProfile = (data: ClientFormData) => {
+  const handleSaveProfile = async (data: ClientFormData) => {
+    if (!client) return;
     const updated: Partial<Client> = {
       name: data.name,
       companyName: data.companyName || undefined,
@@ -91,13 +170,26 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
       address: data.address || undefined,
       status: data.status,
       notes: data.notes || undefined,
-      lastActivity: 'Just now',
     };
-    setClient((prev) => ({ ...prev, ...updated }));
-    updateClient(client.id, updated);
+    await updateClient(client.id, updated);
+    await fetchClient();
   };
 
-  if (!client) {
+  if (isLoading && !client) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-4 w-32 bg-surface-subtle rounded" />
+        <div className="h-28 bg-surface-subtle rounded-xl border border-border" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-surface-subtle rounded-xl border border-border" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !client) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-text-secondary">
@@ -109,7 +201,7 @@ export function ClientProfileView({ clientId }: ClientProfileViewProps) {
         </div>
         <EmptyState
           title="Client Not Found"
-          description="The requested client record does not exist or has been removed."
+          description={loadError || "The requested client record does not exist or has been removed."}
           action={
             <Button variant="primary" onClick={() => router.push('/clients')}>
               Return to Clients

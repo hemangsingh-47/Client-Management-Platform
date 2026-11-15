@@ -21,7 +21,7 @@ import { ProjectStatusBadge, ProjectPriorityBadge } from './project-badges';
 import { ProjectFormModal, ProjectFormData } from './project-form-modal';
 import { ProjectDeleteModal } from './project-delete-modal';
 import { formatINR } from '@/lib/utils';
-import { getProjectFinancialSummary } from '@/lib/utils/payment-utils';
+import { getProjectFinancialSummary, ProjectFinancialSummary } from '@/lib/utils/payment-utils';
 import { useAppContext } from '@/context/app-context';
 import {
   ChevronRight,
@@ -40,6 +40,8 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 
+import { projectsApi, ProjectDetailsResponse } from '@/lib/api';
+
 export interface ProjectDetailsViewProps {
   projectId: string;
 }
@@ -57,27 +59,66 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
     toggleTaskCompleted,
   } = useAppContext();
 
-  // Find project
-  const project: Project | undefined =
-    projects.find((p) => p.id === projectId) || projects[0];
+  const [projectDetails, setProjectDetails] = useState<ProjectDetailsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  // Fetch project details from database API
+  const fetchProject = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await projectsApi.getProjectById(projectId);
+      setProjectDetails(data);
+    } catch (err) {
+      console.error('Failed to load project details from API:', err);
+      const fallback = projects.find((p) => p.id === projectId);
+      if (!fallback) {
+        setLoadError(err instanceof Error ? err.message : 'Project not found');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, projects]);
+
+  React.useEffect(() => {
+    fetchProject();
+  }, [fetchProject]);
+
+  // Find project
+  const project: Project | undefined =
+    (projectDetails as unknown as Project) || projects.find((p) => p.id === projectId);
+
   // Client info
-  const client = project ? clients.find((c) => c.id === project.clientId) : undefined;
+  const client = projectDetails?.client || (project ? clients.find((c) => c.id === project.clientId) : undefined);
 
   // Live related collections
-  const tasks = project ? allTasks.filter((t) => t.projectId === project.id) : [];
-  const deliverables = project ? allDeliverables.filter((d) => d.projectId === project.id) : [];
-  const payments = project ? allPayments.filter((p) => p.projectId === project.id) : [];
+  const tasks = projectDetails?.tasks || (project ? allTasks.filter((t) => t.projectId === project.id) : []);
+  const deliverables = projectDetails?.deliverables || (project ? allDeliverables.filter((d) => d.projectId === project.id) : []);
+  const payments = projectDetails?.payments || (project ? allPayments.filter((p) => p.projectId === project.id) : []);
 
   // Financial summary
-  const finance = project ? getProjectFinancialSummary(project, payments) : null;
+  const finance: ProjectFinancialSummary | null = projectDetails?.financials
+    ? {
+        budget: projectDetails.financials.budget,
+        totalPaid: projectDetails.financials.totalPaid,
+        outstandingBalance: projectDetails.financials.outstanding,
+        pendingAmount: 0,
+        completedPaymentsCount: 0,
+        pendingPaymentsCount: 0,
+        isFullySettled: projectDetails.financials.outstanding <= 0,
+      }
+    : project
+    ? getProjectFinancialSummary(project, allPayments.filter((p) => p.projectId === project.id))
+    : null;
 
-  const handleSaveProject = (data: ProjectFormData) => {
+  const handleSaveProject = async (data: ProjectFormData) => {
     if (!project) return;
-    updateProject(project.id, {
+    await updateProject(project.id, {
       title: data.title,
       clientId: data.clientId,
       description: data.description,
@@ -89,15 +130,36 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
       progress: data.progress,
       notes: data.notes || undefined,
     });
+    await fetchProject();
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!project) return;
-    deleteProject(project.id);
-    router.push('/projects');
+    try {
+      setDeleteError(null);
+      await deleteProject(project.id);
+      setIsDeleteOpen(false);
+      router.push('/projects');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Cannot delete project');
+    }
   };
 
-  if (!project) {
+  if (isLoading && !project) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-4 w-32 bg-surface-subtle rounded" />
+        <div className="h-28 bg-surface-subtle rounded-xl border border-border" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-surface-subtle rounded-xl border border-border" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !project) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-text-secondary">
@@ -109,7 +171,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
         </div>
         <EmptyState
           title="Project Not Found"
-          description="The requested project could not be found or has been removed."
+          description={loadError || "The requested project could not be found or has been removed."}
           action={
             <Button variant="primary" onClick={() => router.push('/projects')}>
               Return to Projects
@@ -138,6 +200,20 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
           {project.title}
         </span>
       </nav>
+
+      {/* Delete Error Notification Banner */}
+      {deleteError && (
+        <div className="p-4 rounded-xl border border-error-border bg-error-bg text-error-text text-sm flex items-center justify-between">
+          <span>{deleteError}</span>
+          <button
+            type="button"
+            onClick={() => setDeleteError(null)}
+            className="text-xs font-semibold underline hover:no-underline cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* 2. Project Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 pb-6 border-b border-border-subtle">
@@ -435,7 +511,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                               {del.title}
                             </TableCell>
                             <TableCell className="text-xs text-text-secondary font-mono">
-                              {del.version || 'v1.0'}
+                              {('version' in del ? String(del.version) : 'v1.0')}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -538,7 +614,7 @@ export function ProjectDetailsView({ projectId }: ProjectDetailsViewProps) {
                                   {p.paymentMethod}
                                 </span>
                                 <span className="text-[11px] text-text-muted font-mono">
-                                  {p.reference}
+                                  {('reference' in p ? String(p.reference) : 'referenceNumber' in p && p.referenceNumber ? String(p.referenceNumber) : '—')}
                                 </span>
                               </div>
                             </TableCell>

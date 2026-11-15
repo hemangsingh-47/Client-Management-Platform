@@ -1,12 +1,5 @@
 import React, { Suspense } from 'react';
-import { INITIAL_CLIENTS } from '@/lib/mock-data/clients';
 import { ClientProfileView } from '@/components/clients/client-profile-view';
-
-export function generateStaticParams() {
-  return INITIAL_CLIENTS.map((client) => ({
-    id: client.id,
-  }));
-}
 
 export default async function ClientProfilePage({
   params,

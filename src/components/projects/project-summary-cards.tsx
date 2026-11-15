@@ -11,9 +11,15 @@ export interface ProjectSummaryCardsProps {
 
 export function ProjectSummaryCards({ projects }: ProjectSummaryCardsProps) {
   const total = projects.length;
-  const inProgress = projects.filter((p) => p.status === 'IN_PROGRESS').length;
-  const completed = projects.filter((p) => p.status === 'COMPLETED').length;
-  const onHold = projects.filter((p) => p.status === 'ON_HOLD').length;
+  const inProgress = projects.filter(
+    (p) => (p.status as string) === 'IN_PROGRESS' || (p.status as string) === 'In Progress'
+  ).length;
+  const completed = projects.filter(
+    (p) => (p.status as string) === 'COMPLETED' || (p.status as string) === 'Completed'
+  ).length;
+  const onHold = projects.filter(
+    (p) => (p.status as string) === 'ON_HOLD' || (p.status as string) === 'On Hold'
+  ).length;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

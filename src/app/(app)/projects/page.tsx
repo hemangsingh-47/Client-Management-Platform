@@ -18,7 +18,7 @@ import {
 } from '@/components/projects';
 import { Project, getProjectClient } from '@/lib/mock-data/projects';
 import { useAppContext } from '@/context/app-context';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ProjectsPage() {
   const {
@@ -27,6 +27,9 @@ export default function ProjectsPage() {
     addProject,
     updateProject,
     deleteProject,
+    isLoading,
+    error,
+    refreshData,
   } = useAppContext();
 
   // Filters & View state
@@ -43,6 +46,7 @@ export default function ProjectsPage() {
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Filter & Sort computation
   const filteredProjects = useMemo(() => {
@@ -106,57 +110,77 @@ export default function ProjectsPage() {
 
   // Open modals
   const handleOpenCreate = () => {
+    setActionError(null);
     setEditingProject(null);
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (project: Project) => {
+    setActionError(null);
     setEditingProject(project);
     setIsFormOpen(true);
   };
 
   const handleOpenDelete = (project: Project) => {
+    setActionError(null);
     setDeletingProject(project);
     setIsDeleteOpen(true);
   };
 
   // Save (Create or Update)
-  const handleSaveProject = (data: ProjectFormData) => {
-    if (editingProject) {
-      updateProject(editingProject.id, {
-        title: data.title,
-        clientId: data.clientId,
-        description: data.description,
-        budget: data.budget,
-        startDate: data.startDate,
-        deadline: data.deadline,
-        status: data.status,
-        priority: data.priority,
-        progress: data.progress,
-        notes: data.notes || undefined,
-      });
-    } else {
-      addProject({
-        title: data.title,
-        clientId: data.clientId,
-        description: data.description,
-        budget: data.budget,
-        startDate: data.startDate,
-        deadline: data.deadline,
-        status: data.status,
-        priority: data.priority,
-        progress: data.progress,
-        notes: data.notes || undefined,
-      });
+  const handleSaveProject = async (data: ProjectFormData) => {
+    try {
+      setActionError(null);
+      if (editingProject) {
+        await updateProject(editingProject.id, {
+          title: data.title,
+          clientId: data.clientId,
+          description: data.description,
+          budget: data.budget,
+          startDate: data.startDate,
+          deadline: data.deadline,
+          status: data.status,
+          priority: data.priority,
+          progress: data.progress,
+          notes: data.notes || undefined,
+        });
+      } else {
+        await addProject({
+          title: data.title,
+          clientId: data.clientId,
+          description: data.description,
+          budget: data.budget,
+          startDate: data.startDate,
+          deadline: data.deadline,
+          status: data.status,
+          priority: data.priority,
+          progress: data.progress,
+          notes: data.notes || undefined,
+        });
+      }
+      setIsFormOpen(false);
+      setEditingProject(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to save project');
     }
   };
 
   // Confirm delete
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingProject) return;
-    deleteProject(deletingProject.id);
-    setDeletingProject(null);
+    try {
+      setActionError(null);
+      await deleteProject(deletingProject.id);
+      setIsDeleteOpen(false);
+      setDeletingProject(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Cannot delete project with active deliverables, tasks, or payments');
+      setIsDeleteOpen(false);
+      setDeletingProject(null);
+    }
   };
+
+  const displayError = actionError || error;
 
   return (
     <div className="space-y-6">
@@ -165,57 +189,105 @@ export default function ProjectsPage() {
         title="Projects"
         description="Plan, track, and manage all your freelance projects in one place."
         action={
-          <Button
-            variant="primary"
-            onClick={handleOpenCreate}
-            className="flex items-center gap-1.5 shadow-xs"
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>New Project</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshData()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 shadow-xs"
+              title="Refresh Projects from Database"
+            >
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleOpenCreate}
+              className="flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>New Project</span>
+            </Button>
+          </div>
         }
       />
 
-      {/* Summary Statistics */}
-      <ProjectSummaryCards projects={projects} />
+      {/* Database Error Banner */}
+      {displayError && (
+        <div className="p-4 rounded-xl bg-error-bg/70 border border-error-border text-error-text flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{displayError}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setActionError(null);
+              refreshData();
+            }}
+            className="shrink-0 h-8 text-xs border-error-border hover:bg-error-bg"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
-      {/* Search & Filters with View Switcher */}
-      <ProjectFilters
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        priorityFilter={priorityFilter}
-        onPriorityChange={setPriorityFilter}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onClearFilters={handleClearFilters}
-        hasActiveFilters={hasActiveFilters}
-      />
-
-      {/* List or Grid View */}
-      {viewMode === 'list' ? (
-        <ProjectListView
-          projects={filteredProjects}
-          clients={clients}
-          onEdit={handleOpenEdit}
-          onDelete={handleOpenDelete}
-          onAddNew={handleOpenCreate}
-          onClearFilters={handleClearFilters}
-          isFiltered={hasActiveFilters}
-        />
+      {/* Loading Skeletons */}
+      {isLoading && projects.length === 0 ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 rounded-xl bg-surface-subtle border border-border-subtle" />
+            ))}
+          </div>
+          <div className="h-96 rounded-xl bg-surface-subtle border border-border-subtle" />
+        </div>
       ) : (
-        <ProjectGridView
-          projects={filteredProjects}
-          clients={clients}
-          onEdit={handleOpenEdit}
-          onDelete={handleOpenDelete}
-          onAddNew={handleOpenCreate}
-          onClearFilters={handleClearFilters}
-          isFiltered={hasActiveFilters}
-        />
+        <>
+          {/* Summary Statistics */}
+          <ProjectSummaryCards projects={projects} />
+
+          {/* Search & Filters with View Switcher */}
+          <ProjectFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onClearFilters={handleClearFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+
+          {/* List or Grid View */}
+          {viewMode === 'list' ? (
+            <ProjectListView
+              projects={filteredProjects}
+              clients={clients}
+              onEdit={handleOpenEdit}
+              onDelete={handleOpenDelete}
+              onAddNew={handleOpenCreate}
+              onClearFilters={handleClearFilters}
+              isFiltered={hasActiveFilters}
+            />
+          ) : (
+            <ProjectGridView
+              projects={filteredProjects}
+              clients={clients}
+              onEdit={handleOpenEdit}
+              onDelete={handleOpenDelete}
+              onAddNew={handleOpenCreate}
+              onClearFilters={handleClearFilters}
+              isFiltered={hasActiveFilters}
+            />
+          )}
+        </>
       )}
 
       {/* Create / Edit Project Modal */}
