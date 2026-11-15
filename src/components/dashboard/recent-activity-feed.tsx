@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { DashboardActivity, MOCK_RECENT_ACTIVITIES } from '@/lib/mock-data/dashboard';
+import { MOCK_RECENT_ACTIVITIES } from '@/lib/mock-data/dashboard';
 import {
   CreditCard,
   CheckCircle2,
@@ -11,25 +11,39 @@ import {
 } from 'lucide-react';
 
 export interface RecentActivityFeedProps {
-  activities?: DashboardActivity[];
+  activities?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    timestamp: string;
+    title?: string;
+    project?: string;
+    client?: string;
+    projectName?: string;
+    clientName?: string;
+  }>;
 }
 
 export function RecentActivityFeed({ activities = MOCK_RECENT_ACTIVITIES }: RecentActivityFeedProps) {
-  const getActivityIcon = (type: DashboardActivity['type']) => {
-    switch (type) {
-      case 'payment':
-        return <CreditCard size={13} className="text-brand-primary" />;
-      case 'task':
-        return <CheckCircle2 size={13} className="text-success-text" />;
-      case 'project':
-        return <FolderPlus size={13} className="text-brand-forest dark:text-brand-sage" />;
-      case 'deliverable':
-        return <FileCheck size={13} className="text-brand-primary" />;
-      case 'deadline':
-        return <Calendar size={13} className="text-warning-text" />;
-      default:
-        return <Activity size={13} className="text-text-muted" />;
+  const getActivityIcon = (type: string) => {
+    const t = type.toLowerCase();
+    if (t.includes('pay')) return <CreditCard size={13} className="text-brand-primary" />;
+    if (t.includes('task')) return <CheckCircle2 size={13} className="text-success-text" />;
+    if (t.includes('proj')) return <FolderPlus size={13} className="text-brand-forest dark:text-brand-sage" />;
+    if (t.includes('deliv')) return <FileCheck size={13} className="text-brand-primary" />;
+    if (t.includes('dead')) return <Calendar size={13} className="text-warning-text" />;
+    return <Activity size={13} className="text-text-muted" />;
+  };
+
+  const formatTimestamp = (ts: string) => {
+    if (!ts) return '';
+    if (ts.includes('T')) {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      }
     }
+    return ts;
   };
 
   return (
@@ -63,10 +77,10 @@ export function RecentActivityFeed({ activities = MOCK_RECENT_ACTIVITIES }: Rece
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-text-primary truncate">
-                  {item.title}
+                  {item.title || item.type.replace(/_/g, ' ')}
                 </span>
                 <span className="text-[10px] font-mono text-text-muted shrink-0">
-                  {item.timestamp}
+                  {formatTimestamp(item.timestamp)}
                 </span>
               </div>
 
@@ -74,11 +88,13 @@ export function RecentActivityFeed({ activities = MOCK_RECENT_ACTIVITIES }: Rece
                 {item.description}
               </p>
 
-              {(item.project || item.client) && (
+              {(item.project || item.client || item.projectName || item.clientName) && (
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
-                  {item.project && <span className="font-medium text-text-secondary">{item.project}</span>}
-                  {item.project && item.client && <span>•</span>}
-                  {item.client && <span>{item.client}</span>}
+                  {(item.project || item.projectName) && (
+                    <span className="font-medium text-text-secondary">{item.project || item.projectName}</span>
+                  )}
+                  {(item.project || item.projectName) && (item.client || item.clientName) && <span>•</span>}
+                  {(item.client || item.clientName) && <span>{item.client || item.clientName}</span>}
                 </div>
               )}
             </div>

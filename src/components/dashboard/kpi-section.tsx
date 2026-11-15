@@ -9,17 +9,33 @@ import { isTaskOverdue } from '@/lib/utils/task-utils';
 import { useAppContext } from '@/context/app-context';
 import { TrendingUp, Clock, Briefcase, CheckCircle2, AlertCircle } from 'lucide-react';
 
-export function KpiSection() {
+export interface KpiSectionProps {
+  kpiData?: {
+    paidThisMonth: number;
+    outstandingPayments: number;
+    activeProjects: number;
+    tasksDueSoon: number;
+    overdueTasks: number;
+  };
+}
+
+export function KpiSection({ kpiData }: KpiSectionProps = {}) {
   const { payments, projects, tasks } = useAppContext();
   const finance = getOverallPaymentStats(payments, projects);
 
-  const activeProjectsCount = projects.filter(
-    (p) => p.status === 'IN_PROGRESS' || p.status === 'PLANNING'
-  ).length;
+  const paidThisMonth = kpiData ? kpiData.paidThisMonth : finance.receivedThisMonth;
+  const outstandingAmount = kpiData ? kpiData.outstandingPayments : finance.outstandingAmount;
+  const activeProjectsCount = kpiData
+    ? kpiData.activeProjects
+    : projects.filter((p) => p.status === 'IN_PROGRESS' || p.status === 'PLANNING').length;
 
   const onHoldCount = projects.filter((p) => p.status === 'ON_HOLD').length;
-  const overdueTasksCount = tasks.filter((t) => isTaskOverdue(t)).length;
-  const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED').length;
+  const overdueTasksCount = kpiData
+    ? kpiData.overdueTasks
+    : tasks.filter((t) => isTaskOverdue(t)).length;
+  const pendingTasksCount = kpiData
+    ? kpiData.tasksDueSoon
+    : tasks.filter((t) => t.status !== 'COMPLETED').length;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -36,7 +52,7 @@ export function KpiSection() {
 
         <div className="mt-4">
           <div className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary font-mono">
-            {formatINR(finance.receivedThisMonth)}
+            {formatINR(paidThisMonth)}
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-xs">
             <Badge variant="success" size="sm" className="font-semibold px-2 py-0.5">
@@ -62,7 +78,7 @@ export function KpiSection() {
 
         <div className="mt-4">
           <div className="text-2xl sm:text-3xl font-bold tracking-tight text-warning-text font-mono">
-            {formatINR(finance.outstandingAmount)}
+            {formatINR(outstandingAmount)}
           </div>
           <div className="mt-2.5 flex items-center gap-1.5 text-xs text-text-muted">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning-text shrink-0" />

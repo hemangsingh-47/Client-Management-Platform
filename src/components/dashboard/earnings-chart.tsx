@@ -6,12 +6,23 @@ import { formatINR } from '@/lib/utils';
 import { MOCK_EARNINGS_RANGES, MonthlyEarningPoint } from '@/lib/mock-data/dashboard';
 import { TrendingUp, BarChart2 } from 'lucide-react';
 
-export function EarningsChart() {
+export interface EarningsChartProps {
+  monthlyData?: Array<{ month: string; revenue: number }>;
+}
+
+export function EarningsChart({ monthlyData }: EarningsChartProps = {}) {
   const [selectedRange, setSelectedRange] = useState<'6m' | 'year' | '12m'>('6m');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const rangeConfig = MOCK_EARNINGS_RANGES[selectedRange];
-  const data: MonthlyEarningPoint[] = rangeConfig?.data || [];
+  const data: MonthlyEarningPoint[] =
+    monthlyData && monthlyData.length > 0
+      ? monthlyData.map((d) => ({
+          month: d.month,
+          amount: d.revenue,
+          label: formatINR(d.revenue),
+        }))
+      : rangeConfig?.data || [];
 
   const totalReceived = data.reduce((sum, item) => sum + item.amount, 0);
 

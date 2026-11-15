@@ -1,19 +1,32 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Client, INITIAL_CLIENTS } from '@/lib/mock-data/clients';
-import { Project, INITIAL_PROJECTS } from '@/lib/mock-data/projects';
+import { Client } from '@/types/client';
+import { Project } from '@/types/project';
 import { Task } from '@/types/task';
-import { INITIAL_TASKS } from '@/lib/mock-data/tasks';
 import { Milestone } from '@/types/milestone';
-import { INITIAL_MILESTONES } from '@/lib/mock-data/milestones';
 import { Deliverable, DeliverableStatus } from '@/types/deliverable';
-import { INITIAL_DELIVERABLES } from '@/lib/mock-data/deliverables';
 import { Payment } from '@/types/payment';
-import { INITIAL_PAYMENTS } from '@/lib/mock-data/payments';
-import { calculateProjectProgress } from '@/lib/utils/project-utils';
-
-const STORAGE_KEY = 'freelancehub_app_state_v1';
+import {
+  clientsApi,
+  projectsApi,
+  tasksApi,
+  milestonesApi,
+  deliverablesApi,
+  paymentsApi,
+  CreateClientDTO,
+  UpdateClientDTO,
+  CreateProjectDTO,
+  UpdateProjectDTO,
+  CreateTaskDTO,
+  UpdateTaskDTO,
+  CreateMilestoneDTO,
+  UpdateMilestoneDTO,
+  CreateDeliverableDTO,
+  UpdateDeliverableDTO,
+  CreatePaymentDTO,
+  UpdatePaymentDTO,
+} from '@/lib/api';
 
 export interface AppContextType {
   clients: Client[];
@@ -22,39 +35,42 @@ export interface AppContextType {
   milestones: Milestone[];
   deliverables: Deliverable[];
   payments: Payment[];
+  isLoading: boolean;
+  error: string | null;
+  refreshData: () => Promise<void>;
 
   // Client Actions
-  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'totalProjects' | 'totalPaid' | 'outstanding' | 'lastActivity'>) => Client;
-  updateClient: (id: string, updates: Partial<Client>) => void;
-  deleteClient: (id: string) => void;
+  addClient: (client: CreateClientDTO) => Promise<Client>;
+  updateClient: (id: string, updates: UpdateClientDTO) => Promise<Client>;
+  deleteClient: (id: string) => Promise<void>;
 
   // Project Actions
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Project;
-  updateProject: (id: string, updates: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
+  addProject: (project: CreateProjectDTO) => Promise<Project>;
+  updateProject: (id: string, updates: UpdateProjectDTO) => Promise<Project>;
+  deleteProject: (id: string) => Promise<void>;
 
   // Task Actions
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => Task;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTaskCompleted: (id: string) => void;
+  addTask: (task: CreateTaskDTO) => Promise<Task>;
+  updateTask: (id: string, updates: UpdateTaskDTO) => Promise<Task>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleTaskCompleted: (id: string) => Promise<void>;
 
   // Milestone Actions
-  addMilestone: (milestone: Omit<Milestone, 'id' | 'createdAt'>) => Milestone;
-  updateMilestone: (id: string, updates: Partial<Milestone>) => void;
-  deleteMilestone: (id: string) => void;
-  toggleMilestoneCompleted: (id: string) => void;
+  addMilestone: (milestone: CreateMilestoneDTO) => Promise<Milestone>;
+  updateMilestone: (id: string, updates: UpdateMilestoneDTO) => Promise<Milestone>;
+  deleteMilestone: (id: string) => Promise<void>;
+  toggleMilestoneCompleted: (id: string) => Promise<void>;
 
   // Deliverable Actions
-  addDeliverable: (deliverable: Omit<Deliverable, 'id' | 'createdAt'>) => Deliverable;
-  updateDeliverable: (id: string, updates: Partial<Deliverable>) => void;
-  deleteDeliverable: (id: string) => void;
-  updateDeliverableStatus: (id: string, status: DeliverableStatus, note?: string) => void;
+  addDeliverable: (deliverable: CreateDeliverableDTO) => Promise<Deliverable>;
+  updateDeliverable: (id: string, updates: UpdateDeliverableDTO) => Promise<Deliverable>;
+  deleteDeliverable: (id: string) => Promise<void>;
+  updateDeliverableStatus: (id: string, status: DeliverableStatus, note?: string) => Promise<void>;
 
   // Payment Actions
-  addPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => Payment;
-  updatePayment: (id: string, updates: Partial<Payment>) => void;
-  deletePayment: (id: string) => void;
+  addPayment: (payment: CreatePaymentDTO) => Promise<Payment>;
+  updatePayment: (id: string, updates: UpdatePaymentDTO) => Promise<Payment>;
+  deletePayment: (id: string) => Promise<void>;
 
   // Helpers
   getClient: (id: string) => Client | undefined;
@@ -65,351 +81,247 @@ export interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [milestones, setMilestones] = useState<Milestone[]>(INITIAL_MILESTONES);
-  const [deliverables, setDeliverables] = useState<Deliverable[]>(INITIAL_DELIVERABLES);
-  const [payments, setPayments] = useState<Payment[]>(INITIAL_PAYMENTS);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Safe SSR hydration: Read localStorage after mount
-  useEffect(() => {
+  // Centralized Data Fetcher from PostgreSQL via Route Handlers
+  const refreshData = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        queueMicrotask(() => {
-          if (parsed.clients) setClients(parsed.clients);
-          if (parsed.projects) setProjects(parsed.projects);
-          if (parsed.tasks) setTasks(parsed.tasks);
-          if (parsed.milestones) setMilestones(parsed.milestones);
-          if (parsed.deliverables) setDeliverables(parsed.deliverables);
-          if (parsed.payments) setPayments(parsed.payments);
-          setIsHydrated(true);
-        });
-        return;
-      }
-    } catch {
-      // Ignore parse or storage errors in private browsing
+      setError(null);
+      const [cRes, pRes, tRes, mRes, dRes, payRes] = await Promise.all([
+        clientsApi.getClients({ limit: 100 }),
+        projectsApi.getProjects({ limit: 100 }),
+        tasksApi.getTasks({ limit: 100 }),
+        milestonesApi.getMilestones(),
+        deliverablesApi.getDeliverables({ limit: 100 }),
+        paymentsApi.getPayments({ limit: 100 }),
+      ]);
+
+      setClients(cRes.items || []);
+      setProjects((pRes.items || []) as unknown as Project[]);
+      setTasks((tRes.items || []) as unknown as Task[]);
+      setMilestones(mRes || []);
+      setDeliverables((dRes.items || []) as unknown as Deliverable[]);
+      setPayments((payRes.items || []) as unknown as Payment[]);
+    } catch (err) {
+      console.error('Failed to load application data from database:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to connect to backend';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
     }
-    queueMicrotask(() => {
-      setIsHydrated(true);
-    });
   }, []);
 
-  // Save to localStorage when state updates post-hydration
+  // Fetch initial data on mount
   useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      const stateToPersist = {
-        clients,
-        projects,
-        tasks,
-        milestones,
-        deliverables,
-        payments,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
-    } catch {
-      // Storage quota or restriction
-    }
-  }, [clients, projects, tasks, milestones, deliverables, payments, isHydrated]);
+    refreshData();
+  }, [refreshData]);
 
-  // Recalculate project progress whenever tasks or milestones change
-  const syncProjectProgress = useCallback((
-    targetProjectId: string,
-    currentProjects: Project[],
-    currentTasks: Task[],
-    currentMilestones: Milestone[]
-  ): Project[] => {
-    return currentProjects.map((p) => {
-      if (p.id !== targetProjectId) return p;
-      const progress = calculateProjectProgress(p, currentTasks, currentMilestones);
-      return { ...p, progress };
-    });
-  }, []);
-
-  // --- Client Handlers ---
+  // --- Client Actions ---
   const addClient = useCallback(
-    (data: Omit<Client, 'id' | 'createdAt' | 'totalProjects' | 'totalPaid' | 'outstanding' | 'lastActivity'>) => {
-      const id = `cli-${Date.now()}`;
-      const newClient: Client = {
-        ...data,
-        id,
-        createdAt: 'Today',
-        totalProjects: 0,
-        totalPaid: 0,
-        outstanding: 0,
-        lastActivity: 'Just now',
-      };
-      setClients((prev) => [newClient, ...prev]);
-      return newClient;
+    async (data: CreateClientDTO) => {
+      const created = await clientsApi.createClient(data);
+      await refreshData();
+      return created;
     },
-    []
+    [refreshData]
   );
 
-  const updateClient = useCallback((id: string, updates: Partial<Client>) => {
-    setClients((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates, lastActivity: 'Just now' } : c))
-    );
-  }, []);
+  const updateClient = useCallback(
+    async (id: string, updates: UpdateClientDTO) => {
+      const updated = await clientsApi.updateClient(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-  const deleteClient = useCallback((id: string) => {
-    setClients((prev) => prev.filter((c) => c.id !== id));
-  }, []);
+  const deleteClient = useCallback(
+    async (id: string) => {
+      await clientsApi.deleteClient(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-  // --- Project Handlers ---
-  const addProject = useCallback((newProjData: Omit<Project, 'id' | 'createdAt'>) => {
-    const id = `proj-${Date.now()}`;
-    const newProject: Project = {
-      ...newProjData,
-      id,
-      createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    };
+  // --- Project Actions ---
+  const addProject = useCallback(
+    async (data: CreateProjectDTO) => {
+      const created = await projectsApi.createProject(data);
+      await refreshData();
+      return created;
+    },
+    [refreshData]
+  );
 
-    setProjects((prev) => [newProject, ...prev]);
-    return newProject;
-  }, []);
+  const updateProject = useCallback(
+    async (id: string, updates: UpdateProjectDTO) => {
+      const updated = await projectsApi.updateProject(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-  const updateProject = useCallback((id: string, updates: Partial<Project>) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  }, []);
+  const deleteProject = useCallback(
+    async (id: string) => {
+      await projectsApi.deleteProject(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-  const deleteProject = useCallback((id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    setTasks((prev) => prev.filter((t) => t.projectId !== id));
-    setMilestones((prev) => prev.filter((m) => m.projectId !== id));
-    setDeliverables((prev) => prev.filter((d) => d.projectId !== id));
-    setPayments((prev) => prev.filter((p) => p.projectId !== id));
-  }, []);
+  // --- Task Actions ---
+  const addTask = useCallback(
+    async (data: CreateTaskDTO) => {
+      const created = await tasksApi.createTask(data);
+      await refreshData();
+      return created;
+    },
+    [refreshData]
+  );
 
-  // --- Task Handlers ---
-  const addTask = useCallback((taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    const id = `tsk-${Date.now()}`;
-    const newTask: Task = {
-      ...taskData,
-      id,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+  const updateTask = useCallback(
+    async (id: string, updates: UpdateTaskDTO) => {
+      const updated = await tasksApi.updateTask(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-    setTasks((prevTasks) => {
-      const updatedTasks = [newTask, ...prevTasks];
-      // update project progress
-      setProjects((prevProjects) =>
-        syncProjectProgress(taskData.projectId, prevProjects, updatedTasks, milestones)
-      );
-      return updatedTasks;
-    });
+  const deleteTask = useCallback(
+    async (id: string) => {
+      await tasksApi.deleteTask(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-    return newTask;
-  }, [milestones, syncProjectProgress]);
+  const toggleTaskCompleted = useCallback(
+    async (id: string) => {
+      const target = tasks.find((t) => t.id === id);
+      if (!target) return;
+      const newStatus = target.status === 'COMPLETED' ? 'TODO' : 'COMPLETED';
+      await tasksApi.updateTask(id, { status: newStatus });
+      await refreshData();
+    },
+    [tasks, refreshData]
+  );
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks((prevTasks) => {
-      const updatedTasks = prevTasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
-      const targetTask = updatedTasks.find((t) => t.id === id);
-      if (targetTask) {
-        setProjects((prevProjects) =>
-          syncProjectProgress(targetTask.projectId, prevProjects, updatedTasks, milestones)
-        );
-      }
-      return updatedTasks;
-    });
-  }, [milestones, syncProjectProgress]);
+  // --- Milestone Actions ---
+  const addMilestone = useCallback(
+    async (data: CreateMilestoneDTO) => {
+      const created = await milestonesApi.createMilestone(data);
+      await refreshData();
+      return created;
+    },
+    [refreshData]
+  );
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prevTasks) => {
-      const targetTask = prevTasks.find((t) => t.id === id);
-      const updatedTasks = prevTasks.filter((t) => t.id !== id);
-      if (targetTask) {
-        setProjects((prevProjects) =>
-          syncProjectProgress(targetTask.projectId, prevProjects, updatedTasks, milestones)
-        );
-      }
-      return updatedTasks;
-    });
-  }, [milestones, syncProjectProgress]);
+  const updateMilestone = useCallback(
+    async (id: string, updates: UpdateMilestoneDTO) => {
+      const updated = await milestonesApi.updateMilestone(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-  const toggleTaskCompleted = useCallback((id: string) => {
-    setTasks((prevTasks) => {
-      const updatedTasks = prevTasks.map((t) => {
-        if (t.id !== id) return t;
-        const willBeCompleted = t.status !== 'COMPLETED';
-        return {
-          ...t,
-          status: (willBeCompleted ? 'COMPLETED' : 'TODO') as Task['status'],
-          completedAt: willBeCompleted ? new Date().toISOString().split('T')[0] : undefined,
-        };
-      });
+  const deleteMilestone = useCallback(
+    async (id: string) => {
+      await milestonesApi.deleteMilestone(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-      const targetTask = updatedTasks.find((t) => t.id === id);
-      if (targetTask) {
-        setProjects((prevProjects) =>
-          syncProjectProgress(targetTask.projectId, prevProjects, updatedTasks, milestones)
-        );
-      }
-      return updatedTasks;
-    });
-  }, [milestones, syncProjectProgress]);
+  const toggleMilestoneCompleted = useCallback(
+    async (id: string) => {
+      const target = milestones.find((m) => m.id === id);
+      if (!target) return;
+      const newStatus = target.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED';
+      await milestonesApi.updateMilestone(id, { status: newStatus });
+      await refreshData();
+    },
+    [milestones, refreshData]
+  );
 
-  // --- Milestone Handlers ---
-  const addMilestone = useCallback((data: Omit<Milestone, 'id' | 'createdAt'>) => {
-    const id = `mls-${Date.now()}`;
-    const newMilestone: Milestone = {
-      ...data,
-      id,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+  // --- Deliverable Actions ---
+  const addDeliverable = useCallback(
+    async (data: CreateDeliverableDTO) => {
+      const created = await deliverablesApi.createDeliverable(data);
+      await refreshData();
+      return created;
+    },
+    [refreshData]
+  );
 
-    setMilestones((prevM) => {
-      const updatedM = [...prevM, newMilestone];
-      setProjects((prevP) =>
-        syncProjectProgress(data.projectId, prevP, tasks, updatedM)
-      );
-      return updatedM;
-    });
+  const updateDeliverable = useCallback(
+    async (id: string, updates: UpdateDeliverableDTO) => {
+      const updated = await deliverablesApi.updateDeliverable(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-    return newMilestone;
-  }, [tasks, syncProjectProgress]);
+  const deleteDeliverable = useCallback(
+    async (id: string) => {
+      await deliverablesApi.deleteDeliverable(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-  const updateMilestone = useCallback((id: string, updates: Partial<Milestone>) => {
-    setMilestones((prevM) => {
-      const updatedM = prevM.map((m) => (m.id === id ? { ...m, ...updates } : m));
-      const target = updatedM.find((m) => m.id === id);
-      if (target) {
-        setProjects((prevP) =>
-          syncProjectProgress(target.projectId, prevP, tasks, updatedM)
-        );
-      }
-      return updatedM;
-    });
-  }, [tasks, syncProjectProgress]);
+  const updateDeliverableStatus = useCallback(
+    async (id: string, status: DeliverableStatus, note?: string) => {
+      await deliverablesApi.updateDeliverable(id, { status, notes: note });
+      await refreshData();
+    },
+    [refreshData]
+  );
 
-  const deleteMilestone = useCallback((id: string) => {
-    setMilestones((prevM) => {
-      const target = prevM.find((m) => m.id === id);
-      const updatedM = prevM.filter((m) => m.id !== id);
-      if (target) {
-        setProjects((prevP) =>
-          syncProjectProgress(target.projectId, prevP, tasks, updatedM)
-        );
-      }
-      return updatedM;
-    });
-  }, [tasks, syncProjectProgress]);
+  // --- Payment Actions ---
+  const addPayment = useCallback(
+    async (data: CreatePaymentDTO) => {
+      const created = await paymentsApi.createPayment(data);
+      await refreshData();
+      return created;
+    },
+    [refreshData]
+  );
 
-  const toggleMilestoneCompleted = useCallback((id: string) => {
-    setMilestones((prevM) => {
-      const updatedM = prevM.map((m) => {
-        if (m.id !== id) return m;
-        const willBeCompleted = m.status !== 'COMPLETED';
-        return {
-          ...m,
-          status: (willBeCompleted ? 'COMPLETED' : 'IN_PROGRESS') as Milestone['status'],
-          completedAt: willBeCompleted ? new Date().toISOString().split('T')[0] : undefined,
-        };
-      });
+  const updatePayment = useCallback(
+    async (id: string, updates: UpdatePaymentDTO) => {
+      const updated = await paymentsApi.updatePayment(id, updates);
+      await refreshData();
+      return updated;
+    },
+    [refreshData]
+  );
 
-      const target = updatedM.find((m) => m.id === id);
-      if (target) {
-        setProjects((prevP) =>
-          syncProjectProgress(target.projectId, prevP, tasks, updatedM)
-        );
-      }
-      return updatedM;
-    });
-  }, [tasks, syncProjectProgress]);
-
-  // --- Deliverable Handlers ---
-  const addDeliverable = useCallback((data: Omit<Deliverable, 'id' | 'createdAt'>) => {
-    const id = `del-${Date.now()}`;
-    const newDeliverable: Deliverable = {
-      ...data,
-      id,
-      createdAt: new Date().toISOString().split('T')[0],
-      activity: [
-        {
-          id: `act-${Date.now()}`,
-          timestamp: 'Just now',
-          action: 'Deliverable created',
-        },
-      ],
-    };
-    setDeliverables((prev) => [newDeliverable, ...prev]);
-    return newDeliverable;
-  }, []);
-
-  const updateDeliverable = useCallback((id: string, updates: Partial<Deliverable>) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...updates } : d))
-    );
-  }, []);
-
-  const deleteDeliverable = useCallback((id: string) => {
-    setDeliverables((prev) => prev.filter((d) => d.id !== id));
-  }, []);
-
-  const updateDeliverableStatus = useCallback((id: string, status: DeliverableStatus, note?: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
-        if (d.id !== id) return d;
-        const newAct = {
-          id: `act-${Date.now()}`,
-          timestamp: 'Just now',
-          action: `Status changed to ${status.replace('_', ' ')}`,
-          note,
-        };
-        return {
-          ...d,
-          status,
-          activity: [newAct, ...(d.activity || [])],
-        };
-      })
-    );
-  }, []);
-
-  // --- Payment Handlers ---
-  const addPayment = useCallback((data: Omit<Payment, 'id' | 'createdAt'>) => {
-    const id = `pay-${Date.now()}`;
-    const newPayment: Payment = {
-      ...data,
-      id,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setPayments((prev) => [newPayment, ...prev]);
-    return newPayment;
-  }, []);
-
-  const updatePayment = useCallback((id: string, updates: Partial<Payment>) => {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  }, []);
-
-  const deletePayment = useCallback((id: string) => {
-    setPayments((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const deletePayment = useCallback(
+    async (id: string) => {
+      await paymentsApi.deletePayment(id);
+      await refreshData();
+    },
+    [refreshData]
+  );
 
   // --- Helpers ---
   const getClient = useCallback((id: string) => clients.find((c) => c.id === id), [clients]);
   const getProject = useCallback((id: string) => projects.find((p) => p.id === id), [projects]);
 
   const resetToDefaultData = useCallback(() => {
-    setClients(INITIAL_CLIENTS);
-    setProjects(INITIAL_PROJECTS);
-    setTasks(INITIAL_TASKS);
-    setMilestones(INITIAL_MILESTONES);
-    setDeliverables(INITIAL_DELIVERABLES);
-    setPayments(INITIAL_PAYMENTS);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
-    }
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   return (
     <AppContext.Provider
@@ -420,6 +332,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         milestones,
         deliverables,
         payments,
+        isLoading,
+        error,
+        refreshData,
         addClient,
         updateClient,
         deleteClient,
@@ -458,4 +373,3 @@ export function useAppContext(): AppContextType {
   }
   return context;
 }
-
