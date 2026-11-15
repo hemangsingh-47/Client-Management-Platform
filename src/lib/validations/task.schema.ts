@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
-const taskStatusEnum = z.enum(['TODO', 'IN_PROGRESS', 'COMPLETED']);
-const priorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+const taskStatusEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase().replace(/\s+/g, '_') : val),
+  z.enum(['TODO', 'IN_PROGRESS', 'COMPLETED'])
+);
+const priorityEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+  z.enum(['LOW', 'MEDIUM', 'HIGH'])
+);
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(2, 'Task title must be at least 2 characters').max(150),

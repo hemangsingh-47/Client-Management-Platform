@@ -8,7 +8,6 @@ import {
   calculateOutstanding,
   willExceedBudget,
   toNumber,
-  toDecimal,
 } from '../utils/financial-calculator';
 
 export class PaymentService {
@@ -77,11 +76,12 @@ export class PaymentService {
     }
 
     // Overpayment check for completed payments
-    if (data.status === 'COMPLETED') {
+    const isCompleted = (data.status as string)?.toUpperCase() === 'COMPLETED' || data.status === 'Completed';
+    if (isCompleted) {
       const existingPayments = await PaymentRepository.findCompletedByProjectId(data.projectId);
       const currentCompleted = calculateCompletedTotal(existingPayments);
 
-      if (willExceedBudget(currentCompleted, data.amount, project.budget)) {
+      if (willExceedBudget(currentCompleted, Number(data.amount), project.budget)) {
         const remaining = calculateOutstanding(project.budget, currentCompleted);
         throw ApiError.badRequest(
           `Payment amount (₹${data.amount}) exceeds remaining project balance of ₹${toNumber(remaining)}.`
@@ -122,14 +122,14 @@ export class PaymentService {
     }
 
     // Overpayment check if amount or status changes to COMPLETED
-    const newStatus = data.status ?? existing.status;
-    const newAmount = data.amount ?? toNumber(existing.amount);
+    const newStatus = (data.status as string)?.toUpperCase() ?? existing.status;
+    const newAmount = Number(data.amount ?? toNumber(existing.amount));
 
     if (newStatus === 'COMPLETED') {
       const otherPayments = await PaymentRepository.findCompletedByProjectId(existing.projectId);
       // Exclude current payment from baseline if it was completed
       const filteredPayments = existing.status === 'COMPLETED'
-        ? otherPayments.filter((p) => !toDecimal(p.amount).equals(existing.amount))
+        ? otherPayments.filter((p) => p.id !== existing.id)
         : otherPayments;
 
       const currentCompleted = calculateCompletedTotal(filteredPayments);

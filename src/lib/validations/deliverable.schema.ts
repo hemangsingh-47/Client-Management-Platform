@@ -1,26 +1,43 @@
 import { z } from 'zod';
 
-const deliverableStatusEnum = z.enum([
-  'PENDING',
-  'SUBMITTED',
-  'APPROVED',
-  'REVISION_REQUIRED',
-]);
+const deliverableStatusEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase().replace(/\s+/g, '_') : val),
+  z.enum([
+    'PENDING',
+    'SUBMITTED',
+    'APPROVED',
+    'REVISION_REQUIRED',
+  ])
+);
 
-const attachmentTypeEnum = z.enum([
+const attachmentTypeEnum = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    return val.toUpperCase().replace(/\s+/g, '_');
+  }
+  return val;
+}, z.enum([
   'FIGMA',
   'GITHUB',
   'DOCUMENT',
   'ARCHIVE',
   'EXTERNAL_LINK',
-]);
+]));
 
 export const createDeliverableSchema = z.object({
   title: z.string().trim().min(2, 'Deliverable title must be at least 2 characters').max(150),
   description: z.string().trim().max(1000).optional().nullable(),
   projectId: z.string().trim().min(1, 'Project ID is required'),
   submissionDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'Invalid submission date format')),
-  attachmentUrl: z.string().trim().url('Invalid attachment URL').optional().nullable().or(z.literal('')),
+  attachmentUrl: z
+    .string()
+    .trim()
+    .refine(
+      (val) => !val || /^https?:\/\/.+/i.test(val),
+      'Attachment URL must start with http:// or https://'
+    )
+    .optional()
+    .nullable()
+    .or(z.literal('')),
   attachmentType: attachmentTypeEnum.default('EXTERNAL_LINK'),
   status: deliverableStatusEnum.default('PENDING'),
   notes: z.string().trim().max(1000).optional().nullable(),

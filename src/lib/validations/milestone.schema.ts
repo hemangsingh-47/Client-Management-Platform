@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-const milestoneStatusEnum = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED']);
+const milestoneStatusEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase().replace(/\s+/g, '_') : val),
+  z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED'])
+);
 
 export const createMilestoneSchema = z.object({
   title: z.string().trim().min(2, 'Milestone title must be at least 2 characters').max(150),

@@ -61,6 +61,7 @@ export class TaskRepository {
           select: {
             id: true,
             title: true,
+            clientId: true,
             client: { select: { id: true, name: true } },
           },
         },

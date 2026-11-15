@@ -9,11 +9,13 @@ import { Milestone } from '@/types/milestone';
  * Checks if a task is overdue.
  * Rule: Completed tasks are NEVER overdue.
  */
-export function isTaskOverdue(task: Task, referenceDate = '2026-11-12'): boolean {
+export function isTaskOverdue(task: Task, referenceDate?: string): boolean {
   if (task.status === 'COMPLETED') {
     return false;
   }
-  return task.dueDate < referenceDate;
+  const ref = referenceDate || new Date().toISOString().split('T')[0];
+  const taskDue = task.dueDate.includes('T') ? task.dueDate.split('T')[0] : task.dueDate;
+  return taskDue < ref;
 }
 
 export interface TaskSummaryStats {
@@ -27,13 +29,14 @@ export interface TaskSummaryStats {
 
 export function getTaskSummaryStats(
   tasks: Task[],
-  referenceDate = '2026-11-12'
+  referenceDate?: string
 ): TaskSummaryStats {
+  const ref = referenceDate || new Date().toISOString().split('T')[0];
   const total = tasks.length;
   const todo = tasks.filter((t) => t.status === 'TODO').length;
   const inProgress = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
   const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
-  const overdue = tasks.filter((t) => isTaskOverdue(t, referenceDate)).length;
+  const overdue = tasks.filter((t) => isTaskOverdue(t, ref)).length;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return {

@@ -88,7 +88,7 @@ export class TaskService {
     if (data.status === 'COMPLETED' && existing.status !== 'COMPLETED') {
       await ActivityRepository.create({
         projectId: existing.projectId,
-        clientId: existing.project.client ? undefined : undefined,
+        clientId: existing.project.clientId,
         type: 'TASK_COMPLETED',
         description: `Task "${updated.title}" completed.`,
       });

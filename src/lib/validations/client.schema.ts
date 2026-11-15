@@ -7,7 +7,10 @@ export const createClientSchema = z.object({
   phone: z.string().trim().max(30).optional().nullable(),
   address: z.string().trim().max(300).optional().nullable(),
   notes: z.string().trim().max(1000).optional().nullable(),
-  status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
+  status: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+    z.enum(['ACTIVE', 'INACTIVE'])
+  ).default('ACTIVE'),
 });
 
 export const updateClientSchema = createClientSchema.partial();

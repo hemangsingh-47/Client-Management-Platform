@@ -1,14 +1,20 @@
 import { z } from 'zod';
 
-const projectStatusEnum = z.enum([
-  'PLANNING',
-  'IN_PROGRESS',
-  'ON_HOLD',
-  'COMPLETED',
-  'CANCELLED',
-]);
+const projectStatusEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase().replace(/\s+/g, '_') : val),
+  z.enum([
+    'PLANNING',
+    'IN_PROGRESS',
+    'ON_HOLD',
+    'COMPLETED',
+    'CANCELLED',
+  ])
+);
 
-const projectPriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+const projectPriorityEnum = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+  z.enum(['LOW', 'MEDIUM', 'HIGH'])
+);
 
 export const createProjectSchema = z
   .object({

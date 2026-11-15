@@ -6,6 +6,24 @@
 import { Payment } from '@/types/payment';
 import { Project } from '@/types/project';
 
+export function isPaymentCompleted(status?: string | null): boolean {
+  if (!status) return false;
+  const s = status.toUpperCase();
+  return s === 'COMPLETED';
+}
+
+export function isPaymentPending(status?: string | null): boolean {
+  if (!status) return false;
+  const s = status.toUpperCase();
+  return s === 'PENDING';
+}
+
+export function isPaymentFailed(status?: string | null): boolean {
+  if (!status) return false;
+  const s = status.toUpperCase();
+  return s === 'FAILED';
+}
+
 export interface ProjectFinancialSummary {
   budget: number;
   totalPaid: number;
@@ -28,19 +46,19 @@ export function getProjectFinancialSummary(
   const projectPayments = payments.filter((p) => p.projectId === project.id);
 
   const totalPaid = projectPayments
-    .filter((p) => p.status === 'Completed')
+    .filter((p) => isPaymentCompleted(p.status))
     .reduce((sum, p) => sum + p.amount, 0);
 
   const pendingAmount = projectPayments
-    .filter((p) => p.status === 'Pending')
+    .filter((p) => isPaymentPending(p.status))
     .reduce((sum, p) => sum + p.amount, 0);
 
   const completedPaymentsCount = projectPayments.filter(
-    (p) => p.status === 'Completed'
+    (p) => isPaymentCompleted(p.status)
   ).length;
 
   const pendingPaymentsCount = projectPayments.filter(
-    (p) => p.status === 'Pending'
+    (p) => isPaymentPending(p.status)
   ).length;
 
   const outstandingBalance = Math.max(0, project.budget - totalPaid);
@@ -75,11 +93,11 @@ export function getClientFinancialSummary(
   const totalBudget = clientProjects.reduce((sum, p) => sum + p.budget, 0);
 
   const totalPaid = clientPayments
-    .filter((p) => p.status === 'Completed')
+    .filter((p) => isPaymentCompleted(p.status))
     .reduce((sum, p) => sum + p.amount, 0);
 
   const pendingAmount = clientPayments
-    .filter((p) => p.status === 'Pending')
+    .filter((p) => isPaymentPending(p.status))
     .reduce((sum, p) => sum + p.amount, 0);
 
   const outstandingBalance = Math.max(0, totalBudget - totalPaid);
@@ -109,7 +127,7 @@ export function getOverallPaymentStats(
   projects: Project[] = [],
   currentMonthPrefix = '2026-11'
 ): OverallPaymentStats {
-  const completedPayments = payments.filter((p) => p.status === 'Completed');
+  const completedPayments = payments.filter((p) => isPaymentCompleted(p.status));
 
   const totalEarnings = completedPayments.reduce(
     (sum, p) => sum + p.amount,
@@ -126,7 +144,7 @@ export function getOverallPaymentStats(
     return sum + summary.outstandingBalance;
   }, 0);
 
-  const pendingPayments = payments.filter((p) => p.status === 'Pending');
+  const pendingPayments = payments.filter((p) => isPaymentPending(p.status));
   const pendingPaymentsCount = pendingPayments.length;
   const pendingAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 

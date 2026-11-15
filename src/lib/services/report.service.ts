@@ -1,27 +1,28 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, ProjectStatus, TaskStatus } from '@prisma/client';
-import { ReportQueryParams } from '../validations/report.schema';
+import { reportQuerySchema, ReportQueryParams } from '../validations/report.schema';
 import { toNumber, calculateCompletedTotal, calculateOutstanding } from '../utils/financial-calculator';
 
 export class ReportService {
-  static async generateReport(params: ReportQueryParams) {
+  static async generateReport(params: Partial<ReportQueryParams> = {}) {
+    const validated = reportQuerySchema.parse(params);
     const projectWhere: Prisma.ProjectWhereInput = {};
 
-    if (params.clientId) {
-      projectWhere.clientId = params.clientId;
+    if (validated.clientId) {
+      projectWhere.clientId = validated.clientId;
     }
 
-    if (params.projectStatus && params.projectStatus !== 'ALL') {
-      projectWhere.status = params.projectStatus as ProjectStatus;
+    if (validated.projectStatus && validated.projectStatus !== 'ALL') {
+      projectWhere.status = validated.projectStatus as ProjectStatus;
     }
 
-    if (params.startDate || params.endDate) {
+    if (validated.startDate || validated.endDate) {
       projectWhere.createdAt = {};
-      if (params.startDate) {
-        projectWhere.createdAt.gte = new Date(params.startDate);
+      if (validated.startDate) {
+        projectWhere.createdAt.gte = new Date(validated.startDate);
       }
-      if (params.endDate) {
-        projectWhere.createdAt.lte = new Date(params.endDate);
+      if (validated.endDate) {
+        projectWhere.createdAt.lte = new Date(validated.endDate);
       }
     }
 
@@ -40,7 +41,7 @@ export class ReportService {
       }),
 
       prisma.client.findMany({
-        where: params.clientId ? { id: params.clientId } : undefined,
+        where: validated.clientId ? { id: validated.clientId } : undefined,
         include: {
           projects: {
             include: {
@@ -51,7 +52,7 @@ export class ReportService {
       }),
 
       prisma.task.findMany({
-        where: params.clientId ? { project: { clientId: params.clientId } } : undefined,
+        where: validated.clientId ? { project: { clientId: validated.clientId } } : undefined,
         select: {
           id: true,
           status: true,

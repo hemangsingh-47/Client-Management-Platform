@@ -4,6 +4,7 @@
 
 import { ProjectStatus } from '@/types/project';
 import { Payment } from '@/types/payment';
+import { isPaymentCompleted, isPaymentPending } from './payment-utils';
 
 export interface MonthlyRevenuePoint {
   month: string;
@@ -59,11 +60,11 @@ export function getMonthlyRevenueData(
   return months.map(({ key, label }) => {
     const monthPayments = payments.filter((p) => p.paymentDate.startsWith(key));
     const received = monthPayments
-      .filter((p) => p.status === 'Completed')
+      .filter((p) => isPaymentCompleted(p.status))
       .reduce((sum, p) => sum + p.amount, 0);
 
     const pending = monthPayments
-      .filter((p) => p.status === 'Pending')
+      .filter((p) => isPaymentPending(p.status))
       .reduce((sum, p) => sum + p.amount, 0);
 
     return {

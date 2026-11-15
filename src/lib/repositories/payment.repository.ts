@@ -80,6 +80,7 @@ export class PaymentRepository {
         status: PaymentStatus.COMPLETED,
       },
       select: {
+        id: true,
         amount: true,
         status: true,
       },
@@ -90,11 +91,15 @@ export class PaymentRepository {
     return prisma.payment.create({
       data: {
         projectId: data.projectId,
-        amount: new Prisma.Decimal(data.amount),
+        amount: new Prisma.Decimal(Number(data.amount)),
         paymentDate: new Date(data.paymentDate),
-        paymentMethod: data.paymentMethod as PaymentMethod,
-        referenceNumber: data.referenceNumber ?? null,
-        status: data.status as PaymentStatus,
+        paymentMethod: (typeof data.paymentMethod === 'string'
+          ? (data.paymentMethod.toUpperCase().replace(/\s+/g, '_') as PaymentMethod)
+          : PaymentMethod.BANK_TRANSFER),
+        referenceNumber: data.referenceNumber ?? data.reference ?? null,
+        status: (typeof data.status === 'string'
+          ? (data.status.toUpperCase() as PaymentStatus)
+          : PaymentStatus.COMPLETED),
         notes: data.notes ?? null,
       },
       include: {
@@ -111,7 +116,7 @@ export class PaymentRepository {
     return prisma.payment.update({
       where: { id },
       data: {
-        ...(data.amount !== undefined && { amount: new Prisma.Decimal(data.amount) }),
+        ...(data.amount !== undefined && { amount: new Prisma.Decimal(Number(data.amount)) }),
         ...(data.paymentDate !== undefined && { paymentDate: new Date(data.paymentDate) }),
         ...(data.paymentMethod !== undefined && { paymentMethod: data.paymentMethod as PaymentMethod }),
         ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber ?? null }),
