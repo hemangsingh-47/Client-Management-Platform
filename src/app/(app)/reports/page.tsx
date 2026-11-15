@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -16,16 +16,22 @@ import {
   ReportStatusFilter,
 } from '@/components/reports';
 import { getMonthlyRevenueData, downloadCsv } from '@/lib/utils/report-utils';
-import { getProjectFinancialSummary } from '@/lib/utils/payment-utils';
-import { Download } from 'lucide-react';
+import { getProjectFinancialSummary, isPaymentCompleted } from '@/lib/utils/payment-utils';
+import { reportsApi, ReportData } from '@/lib/api/reports.api';
+import { Download, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ReportsPage() {
-  const { clients, projects, tasks, milestones, payments } = useAppContext();
+  const { clients, projects, tasks, milestones, payments, isLoading: isContextLoading, error: contextError, refreshData } = useAppContext();
 
   // Filters State
   const [dateRange, setDateRange] = useState<ReportDateRange>('ALL');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('ALL');
+
+  // Backend Report API state
+  const [backendReport, setBackendReport] = useState<ReportData | null>(null);
+  const [isReportLoading, setIsReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   // Clear filters
   const handleClearFilters = () => {
@@ -36,6 +42,46 @@ export default function ReportsPage() {
 
   const hasActiveFilters =
     dateRange !== 'ALL' || clientFilter !== 'ALL' || statusFilter !== 'ALL';
+
+  // Fetch report data from backend API
+  const fetchBackendReport = useCallback(async () => {
+    try {
+      setIsReportLoading(true);
+      setReportError(null);
+
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+
+      if (dateRange === 'THIS_MONTH') {
+        startDate = '2026-11-01';
+        endDate = '2026-11-30';
+      } else if (dateRange === 'LAST_3_MONTHS') {
+        startDate = '2026-09-01';
+        endDate = '2026-11-30';
+      } else if (dateRange === 'THIS_YEAR') {
+        startDate = '2026-01-01';
+        endDate = '2026-12-31';
+      }
+
+      const params: Record<string, string> = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (clientFilter !== 'ALL') params.clientId = clientFilter;
+      if (statusFilter !== 'ALL') params.projectStatus = statusFilter;
+
+      const data = await reportsApi.getReports(params);
+      setBackendReport(data);
+    } catch (err: unknown) {
+      console.error('Failed to load reports from backend:', err);
+      setReportError(err instanceof Error ? err.message : 'Failed to fetch report analytics');
+    } finally {
+      setIsReportLoading(false);
+    }
+  }, [dateRange, clientFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchBackendReport();
+  }, [fetchBackendReport]);
 
   // Filtered Projects
   const filteredProjects = useMemo(() => {
@@ -90,17 +136,23 @@ export default function ReportsPage() {
 
   // Overall Financial Calculations for Summary Cards
   const totalSettledRevenue = useMemo(() => {
+    if (backendReport?.revenueSummary && !hasActiveFilters) {
+      return backendReport.revenueSummary.totalReceived;
+    }
     return filteredPayments
-      .filter((p) => p.status === 'Completed')
+      .filter((p) => isPaymentCompleted(p.status))
       .reduce((sum, p) => sum + p.amount, 0);
-  }, [filteredPayments]);
+  }, [filteredPayments, backendReport, hasActiveFilters]);
 
   const totalOutstanding = useMemo(() => {
+    if (backendReport?.revenueSummary && !hasActiveFilters) {
+      return backendReport.revenueSummary.totalOutstanding;
+    }
     return filteredProjects.reduce((sum, proj) => {
       const fin = getProjectFinancialSummary(proj, payments);
       return sum + fin.outstandingBalance;
     }, 0);
-  }, [filteredProjects, payments]);
+  }, [filteredProjects, payments, backendReport, hasActiveFilters]);
 
   const completedProjectsCount = useMemo(() => {
     return filteredProjects.filter((p) => p.status === 'COMPLETED').length;
@@ -156,6 +208,13 @@ export default function ReportsPage() {
     downloadCsv(`freelancehub-analytics-report-${dateStr}.csv`, headers, rows);
   };
 
+  const handleRetryAll = () => {
+    refreshData();
+    fetchBackendReport();
+  };
+
+  const displayError = reportError || contextError;
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -163,17 +222,48 @@ export default function ReportsPage() {
         title="Reports & Analytics"
         description="Comprehensive revenue tracking, client account performance, and delivery velocity."
         action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 cursor-pointer shadow-xs font-medium"
-          >
-            <Download size={15} />
-            <span>Export CSV</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetryAll}
+              disabled={isReportLoading || isContextLoading}
+              className="flex items-center gap-1.5 cursor-pointer shadow-xs font-medium"
+              title="Refresh Analytics from Database"
+            >
+              <RefreshCw size={14} className={isReportLoading || isContextLoading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Sync</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              className="flex items-center gap-1.5 cursor-pointer shadow-xs font-medium"
+            >
+              <Download size={15} />
+              <span>Export CSV</span>
+            </Button>
+          </div>
         }
       />
+
+      {/* Database Error Banner */}
+      {displayError && (
+        <div className="p-4 rounded-xl bg-error-bg/70 border border-error-border text-error-text flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{displayError}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRetryAll}
+            className="shrink-0 h-8 text-xs border-error-border hover:bg-error-bg"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <ReportFilters
@@ -188,40 +278,57 @@ export default function ReportsPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* 4 Summary KPI Cards */}
-      <ReportSummaryCards
-        totalRevenue={totalSettledRevenue}
-        outstandingRevenue={totalOutstanding}
-        completedProjectsCount={completedProjectsCount}
-        completionRate={completionRate}
-      />
-
-      {/* Visual Analytics Grid: Revenue Trend & Status Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RevenueChart data={monthlyRevenueData} />
+      {/* Loading Skeletons */}
+      {(isContextLoading && projects.length === 0) ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 rounded-xl bg-surface-subtle border border-border-subtle" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-72 rounded-xl bg-surface-subtle border border-border-subtle" />
+            <div className="h-72 rounded-xl bg-surface-subtle border border-border-subtle" />
+          </div>
         </div>
-        <div>
-          <ProjectStatusDistribution projects={filteredProjects} />
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* 4 Summary KPI Cards */}
+          <ReportSummaryCards
+            totalRevenue={totalSettledRevenue}
+            outstandingRevenue={totalOutstanding}
+            completedProjectsCount={completedProjectsCount}
+            completionRate={completionRate}
+          />
 
-      {/* Task & Milestone Velocity */}
-      <TaskPerformanceSection tasks={filteredTasks} milestones={filteredMilestones} />
+          {/* Visual Analytics Grid: Revenue Trend & Status Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <RevenueChart data={monthlyRevenueData} />
+            </div>
+            <div>
+              <ProjectStatusDistribution projects={filteredProjects} />
+            </div>
+          </div>
 
-      {/* Client Performance Table */}
-      <ClientPerformanceTable
-        clients={displayClients}
-        projects={filteredProjects}
-        payments={payments}
-      />
+          {/* Task & Milestone Velocity */}
+          <TaskPerformanceSection tasks={filteredTasks} milestones={filteredMilestones} />
 
-      {/* Project Financial & Progress Table */}
-      <ProjectPerformanceTable
-        projects={filteredProjects}
-        payments={payments}
-        clients={clients}
-      />
+          {/* Client Performance Table */}
+          <ClientPerformanceTable
+            clients={displayClients}
+            projects={filteredProjects}
+            payments={payments}
+          />
+
+          {/* Project Financial & Progress Table */}
+          <ProjectPerformanceTable
+            projects={filteredProjects}
+            payments={payments}
+            clients={clients}
+          />
+        </>
+      )}
     </div>
   );
 }

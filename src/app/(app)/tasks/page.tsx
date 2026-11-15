@@ -22,7 +22,7 @@ import { Task } from '@/types/task';
 import { Milestone } from '@/types/milestone';
 import { isTaskOverdue } from '@/lib/utils/task-utils';
 import { useAppContext } from '@/context/app-context';
-import { Plus, ListTodo, Flag } from 'lucide-react';
+import { Plus, ListTodo, Flag, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function TasksPage() {
@@ -38,6 +38,9 @@ export default function TasksPage() {
     updateMilestone,
     deleteMilestone,
     toggleMilestoneCompleted,
+    isLoading,
+    error,
+    refreshData,
   } = useAppContext();
 
   // Active Tab: 'tasks' | 'milestones'
@@ -62,6 +65,8 @@ export default function TasksPage() {
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [isMilestoneDeleteOpen, setIsMilestoneDeleteOpen] = useState(false);
   const [deletingMilestone, setDeletingMilestone] = useState<Milestone | null>(null);
+
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Filter & Sort tasks
   const filteredTasks = useMemo(() => {
@@ -105,12 +110,13 @@ export default function TasksPage() {
         case 'due_desc':
           return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
         case 'priority': {
-          const weights: Record<Task['priority'], number> = {
+          const priorityOrder: Record<string, number> = {
+            URGENT: 4,
             HIGH: 3,
             MEDIUM: 2,
             LOW: 1,
           };
-          return weights[b.priority] - weights[a.priority];
+          return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
         }
         case 'title':
           return a.title.localeCompare(b.title);
@@ -141,63 +147,101 @@ export default function TasksPage() {
 
   // Task Handlers
   const handleOpenAddTask = () => {
+    setActionError(null);
     setEditingTask(null);
     setIsTaskFormOpen(true);
   };
 
   const handleOpenEditTask = (task: Task) => {
+    setActionError(null);
     setEditingTask(task);
     setIsTaskFormOpen(true);
   };
 
   const handleOpenDeleteTask = (task: Task) => {
+    setActionError(null);
     setDeletingTask(task);
     setIsTaskDeleteOpen(true);
   };
 
-  const handleSaveTask = (data: TaskFormData) => {
-    if (editingTask) {
-      updateTask(editingTask.id, data);
-    } else {
-      addTask(data);
+  const handleSaveTask = async (data: TaskFormData) => {
+    try {
+      setActionError(null);
+      if (editingTask) {
+        await updateTask(editingTask.id, data);
+      } else {
+        await addTask(data);
+      }
+      setIsTaskFormOpen(false);
+      setEditingTask(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to save task');
     }
   };
 
-  const handleConfirmDeleteTask = () => {
+  const handleConfirmDeleteTask = async () => {
     if (!deletingTask) return;
-    deleteTask(deletingTask.id);
-    setDeletingTask(null);
+    try {
+      setActionError(null);
+      await deleteTask(deletingTask.id);
+      setIsTaskDeleteOpen(false);
+      setDeletingTask(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete task');
+      setIsTaskDeleteOpen(false);
+      setDeletingTask(null);
+    }
   };
 
   // Milestone Handlers
   const handleOpenAddMilestone = () => {
+    setActionError(null);
     setEditingMilestone(null);
     setIsMilestoneFormOpen(true);
   };
 
   const handleOpenEditMilestone = (m: Milestone) => {
+    setActionError(null);
     setEditingMilestone(m);
     setIsMilestoneFormOpen(true);
   };
 
   const handleOpenDeleteMilestone = (m: Milestone) => {
+    setActionError(null);
     setDeletingMilestone(m);
     setIsMilestoneDeleteOpen(true);
   };
 
-  const handleSaveMilestone = (data: MilestoneFormData) => {
-    if (editingMilestone) {
-      updateMilestone(editingMilestone.id, data);
-    } else {
-      addMilestone(data);
+  const handleSaveMilestone = async (data: MilestoneFormData) => {
+    try {
+      setActionError(null);
+      if (editingMilestone) {
+        await updateMilestone(editingMilestone.id, data);
+      } else {
+        await addMilestone(data);
+      }
+      setIsMilestoneFormOpen(false);
+      setEditingMilestone(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to save milestone');
     }
   };
 
-  const handleConfirmDeleteMilestone = () => {
+  const handleConfirmDeleteMilestone = async () => {
     if (!deletingMilestone) return;
-    deleteMilestone(deletingMilestone.id);
-    setDeletingMilestone(null);
+    try {
+      setActionError(null);
+      await deleteMilestone(deletingMilestone.id);
+      setIsMilestoneDeleteOpen(false);
+      setDeletingMilestone(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete milestone');
+      setIsMilestoneDeleteOpen(false);
+      setDeletingMilestone(null);
+    }
   };
+
+  const displayError = actionError || error;
 
   return (
     <div className="space-y-6">
@@ -207,6 +251,18 @@ export default function TasksPage() {
         description="Stay organized, coordinate deliverable sprints, and keep your projects moving forward."
         action={
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshData()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 shadow-xs"
+              title="Refresh Tasks from Database"
+            >
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
             <Button
               variant="outline"
               size="md"
@@ -230,91 +286,126 @@ export default function TasksPage() {
         }
       />
 
-      {/* 2. Summary Statistics (5 Cards) */}
-      <TaskSummaryCards tasks={tasks} />
-
-      {/* 3. Section Switcher Tabs: Tasks vs Milestones */}
-      <div className="flex items-center justify-between border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('tasks')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer',
-              activeTab === 'tasks'
-                ? 'border-brand-primary text-text-primary font-bold'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            )}
+      {/* Database Error Banner */}
+      {displayError && (
+        <div className="p-4 rounded-xl bg-error-bg/70 border border-error-border text-error-text flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{displayError}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setActionError(null);
+              refreshData();
+            }}
+            className="shrink-0 h-8 text-xs border-error-border hover:bg-error-bg"
           >
-            <ListTodo size={16} />
-            <span>All Tasks</span>
-            <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono font-normal">
-              {tasks.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('milestones')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer',
-              activeTab === 'milestones'
-                ? 'border-brand-primary text-text-primary font-bold'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            )}
-          >
-            <Flag size={15} />
-            <span>Project Milestones</span>
-            <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono font-normal">
-              {milestones.length}
-            </span>
-          </button>
+            Retry
+          </Button>
         </div>
-      </div>
+      )}
 
-      {/* 4. Tab Content */}
-      {activeTab === 'tasks' ? (
-        <div className="space-y-4">
-          {/* Filters & Sorters */}
-          <TaskFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            projectFilter={projectFilter}
-            onProjectChange={setProjectFilter}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            priorityFilter={priorityFilter}
-            onPriorityChange={setPriorityFilter}
-            isOverdueOnly={isOverdueOnly}
-            onOverdueToggle={() => setIsOverdueOnly((prev) => !prev)}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            projects={projects}
-            onClearFilters={handleClearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
-
-          {/* Interactive Task Table */}
-          <TaskTable
-            tasks={filteredTasks}
-            projects={projects}
-            onToggleComplete={toggleTaskCompleted}
-            onEdit={handleOpenEditTask}
-            onDelete={handleOpenDeleteTask}
-            onAddNew={handleOpenAddTask}
-            onClearFilters={handleClearFilters}
-            isFiltered={hasActiveFilters}
-          />
+      {/* Loading Skeletons */}
+      {isLoading && tasks.length === 0 ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-28 rounded-xl bg-surface-subtle border border-border-subtle" />
+            ))}
+          </div>
+          <div className="h-96 rounded-xl bg-surface-subtle border border-border-subtle" />
         </div>
       ) : (
-        <MilestoneList
-          milestones={milestones}
-          projects={projects}
-          onToggleComplete={toggleMilestoneCompleted}
-          onEdit={handleOpenEditMilestone}
-          onDelete={handleOpenDeleteMilestone}
-          onAddNew={handleOpenAddMilestone}
-        />
+        <>
+          {/* 2. Summary Statistics (5 Cards) */}
+          <TaskSummaryCards tasks={tasks} />
+
+          {/* 3. Section Switcher Tabs: Tasks vs Milestones */}
+          <div className="flex items-center justify-between border-b border-border">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('tasks')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer',
+                  activeTab === 'tasks'
+                    ? 'border-brand-primary text-text-primary font-bold'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                )}
+              >
+                <ListTodo size={16} />
+                <span>All Tasks</span>
+                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono font-normal">
+                  {tasks.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('milestones')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer',
+                  activeTab === 'milestones'
+                    ? 'border-brand-primary text-text-primary font-bold'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                )}
+              >
+                <Flag size={15} />
+                <span>Project Milestones</span>
+                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-surface-subtle border border-border font-mono font-normal">
+                  {milestones.length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4. Tab Content */}
+          {activeTab === 'tasks' ? (
+            <div className="space-y-4">
+              {/* Filters & Sorters */}
+              <TaskFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                projectFilter={projectFilter}
+                onProjectChange={setProjectFilter}
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                priorityFilter={priorityFilter}
+                onPriorityChange={setPriorityFilter}
+                isOverdueOnly={isOverdueOnly}
+                onOverdueToggle={() => setIsOverdueOnly((prev) => !prev)}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                projects={projects}
+                onClearFilters={handleClearFilters}
+                hasActiveFilters={hasActiveFilters}
+              />
+
+              {/* Interactive Task Table */}
+              <TaskTable
+                tasks={filteredTasks}
+                projects={projects}
+                onToggleComplete={toggleTaskCompleted}
+                onEdit={handleOpenEditTask}
+                onDelete={handleOpenDeleteTask}
+                onAddNew={handleOpenAddTask}
+                onClearFilters={handleClearFilters}
+                isFiltered={hasActiveFilters}
+              />
+            </div>
+          ) : (
+            <MilestoneList
+              milestones={milestones}
+              projects={projects}
+              onToggleComplete={toggleMilestoneCompleted}
+              onEdit={handleOpenEditMilestone}
+              onDelete={handleOpenDeleteMilestone}
+              onAddNew={handleOpenAddMilestone}
+            />
+          )}
+        </>
       )}
 
       {/* Modals */}
